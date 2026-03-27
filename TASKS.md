@@ -1,9 +1,16 @@
-Sarsa Game Engine
+# Sarsa Game Engine
+
+## What
+- a modern 3D PBR game engine, object-oriented, with multiplayer
+- libraries: glfw, glm, spdlog, The Forge, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype, FreeType
+
+## Why
+- for learning
 
 ### Build & Architecture
 - CMake build system
 - Runtime, editor, and game modules as separate binaries/libraries
-- Entity Component System architecture (EnTT)
+- Object-oriented architecture with game objects, component composition, and inheritance
 - C++ gameplay modules with desktop hot reload in editor/dev builds via a stable module boundary (avoid raw C++ ABI coupling)
 - Fixed timestep runtime with clear simulation/render separation
 - Reproducible simulation on the same platform/build for debugging and networking validation
@@ -59,7 +66,7 @@ Sarsa Game Engine
 - Rigid body simulation and collision detection (Jolt Physics)
 - Collision layers/masks, raycasts, overlap queries, sweeps, and debug visualization
 - Fixed timestep simulation with optional sub-stepping where required
-- Defined transform ownership/sync rules between gameplay, ECS, and physics
+- Defined transform ownership/sync rules between gameplay objects and physics
 
 ### Animation
 - Static mesh import first, then skeletal animation, skinning, and animation playback
@@ -91,9 +98,9 @@ Sarsa Game Engine
 - [ ] GLFW window creation and input loop, unless replaced by The Forge platform layer
 - [ ] The Forge initialization, validation layers, and swapchain setup
 - [ ] Clear screen rendering (proof of life)
-- [ ] EnTT integration (entities, components, systems)
+- [ ] Game object model (base class, component ownership, lifecycle management)
 - [ ] Game loop with fixed timestep update and simulation/render separation
-- [ ] Unit test framework setup and first tests (serialization, ECS basics)
+- [ ] Unit test framework setup and first tests (serialization, game object basics)
 
 ### T2 - Renderer Bring-Up
 - [ ] HLSL shader compilation pipeline (DXC + SPIRV-Cross)
@@ -172,7 +179,7 @@ Sarsa Game Engine
 - [ ] Jolt Physics integration
 - [ ] Rigidbody and collider components
 - [ ] Collision layers and masks
-- [ ] Physics <-> ECS transform ownership/sync policy
+- [ ] Physics <-> game object transform ownership/sync policy
 - [ ] Fixed timestep physics integration with optional sub-stepping
 - [ ] Raycasts, sweeps, overlap queries, and gameplay query API
 - [ ] Physics debug visualization
@@ -184,7 +191,7 @@ Sarsa Game Engine
 - [ ] Define replicated entity identity and ownership rules
 - [ ] Define component serialization rules for replication
 - [ ] Choose prediction/reconciliation scope (full movement, selected actors, or hybrid)
-- [ ] Validate ECS, physics, and gameplay assumptions against representative scenarios
+- [ ] Validate object model, physics, and gameplay assumptions against representative scenarios
 - [ ] Lock reliable/unreliable channel usage and message categories
 - [ ] Define divergence detection and debug tooling requirements
 - [ ] Document what simulation guarantees networking depends on, and what it does not
