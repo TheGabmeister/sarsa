@@ -1,6 +1,7 @@
 add_library(sarsa_engine STATIC
     engine.cpp
     log.cpp
+    crash_handler.cpp
 )
 
 target_include_directories(sarsa_engine
