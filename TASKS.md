@@ -102,17 +102,17 @@
 - [ ] spdlog integration with structured logging
 - [ ] Assertions and crash handling
 
-#### T8 - Unit Testing
+#### T3 - Unit Testing
 - [ ] Test framework setup
 - [ ] First tests (logging, assertions, game loop timing)
 
-#### T3 - Memory Diagnostics
+#### T4 - Memory Diagnostics
 - [ ] Debug leak checks and allocation counters
 
-#### T4 - Window and Input
+#### T5 - Window and Input
 - [ ] GLFW window creation and basic input loop
 
-#### T5 - Graphics Initialization
+#### T6 - Graphics Initialization
 - [ ] The Forge initialization and validation layers
 - [ ] Swapchain setup and clear screen rendering (proof of life)
 
@@ -122,155 +122,155 @@
 
 ### Phase 2: First Triangle
 
-#### T9 - Shader Compilation
+#### T8 - Shader Compilation
 - [ ] HLSL compilation via DXC (SPIR-V for Vulkan)
 
-#### T10 - GPU Resource Management
+#### T9 - GPU Resource Management
 - [ ] GPU upload path and staging buffers
 - [ ] Resource lifetime management
 
-#### T11 - Descriptor Binding
+#### T10 - Descriptor Binding
 - [ ] Descriptor/resource binding model
 
-#### T12 - Frame Synchronization
+#### T11 - Frame Synchronization
 - [ ] Frame allocators and GPU synchronization
 - [ ] Swapchain resize handling
 
-#### T13 - Triangle Rendering
+#### T12 - Triangle Rendering
 - [ ] Vertex and index buffer setup
 - [ ] Triangle on screen
 
 ### Phase 3: 3D Foundations
 
-#### T6 - Game Object Model
+#### T13 - Game Object Model
 - [ ] Base game object class with component ownership
 - [ ] Object lifecycle management (create, initialize, destroy)
 
-#### T22 - Transforms and Scene Graph
+#### T14 - Transforms and Scene Graph
 - [ ] Transform, mesh, camera, and light components
 - [ ] Parent-child transform hierarchy
 
-#### T23 - Camera System
+#### T15 - Camera System
 - [ ] Perspective projection
 - [ ] Free-look camera controls
 
-#### T18 - Test Mesh Loading
+#### T16 - Test Mesh Loading
 - [ ] Hardcoded mesh loading (OBJ or glTF) for visual feedback
 
-#### T19 - Frustum Culling
+#### T17 - Frustum Culling
 - [ ] Frustum culling implementation
 - [ ] Opaque/transparent draw sorting
 
-#### T20 - Forward Lighting
+#### T18 - Forward Lighting
 - [ ] Directional light support
 - [ ] Point light support (no shadows yet)
 
-#### T21 - Skybox
+#### T19 - Skybox
 - [ ] Skybox rendering
 
-#### T96 - Multi-Backend Smoke Test (Optional)
+#### T20 - Multi-Backend Smoke Test (Optional)
 - [ ] Verify lit mesh renders on a second backend (D3D12 or Metal)
 - [ ] Note any abstraction issues for later (full validation in Phase 17)
 
 ### Phase 4: Materials & Textures
 
-#### T42 - 3D Model Import
+#### T21 - 3D Model Import
 - [ ] Assimp integration for static mesh loading
 
-#### T43 - Texture Import
+#### T22 - Texture Import
 - [ ] Texture import and compression pipeline
 - [ ] Material texture assignment
 
-#### T44 - Material System
+#### T23 - Material System
 - [ ] Material asset system (textures, shader assignment, parameters)
 
-#### T94 - GPU-Driven Rendering Decision
+#### T24 - GPU-Driven Rendering Decision
 - [ ] Evaluate GPU-driven vs. CPU-driven draw submission for this engine's scope
 - [ ] Document decision and implications for future rendering work
 
 ### Phase 5: Shadows & PBR
 
-#### T95 - Render Pass Management
+#### T25 - Render Pass Management
 - [ ] Minimal pass/resource orchestration (render target creation, pass ordering, resource transitions)
 - [ ] Enough structure to support shadow passes feeding into the main lighting pass
 
-#### T73 - Shadow Mapping
+#### T26 - Shadow Mapping
 - [ ] Shadow mapping (directional + point light shadows)
 
-#### T71 - PBR Materials
+#### T27 - PBR Materials
 - [ ] PBR material model (metallic-roughness workflow)
 
-#### T72 - Image-Based Lighting
+#### T28 - Image-Based Lighting
 - [ ] IBL with environment maps
 
-#### T74 - HDR Pipeline
+#### T29 - HDR Pipeline
 - [ ] HDR rendering and tonemapping
 
 ### Phase 6: Physics
 
-#### T55 - Physics Initialization
+#### T30 - Physics Initialization
 - [ ] Jolt Physics integration
 - [ ] Rigidbody and collider components
 
-#### T56 - Collision Configuration
+#### T31 - Collision Configuration
 - [ ] Collision layers and masks
 - [ ] Physics <-> game object transform ownership/sync policy
 
-#### T57 - Physics Timestep
+#### T32 - Physics Timestep
 - [ ] Fixed timestep physics integration with optional sub-stepping
 
-#### T58 - Physics Queries
+#### T33 - Physics Queries
 - [ ] Raycasts, sweeps, and overlap queries
 - [ ] Gameplay query API
 
-#### T59 - Physics Debug and Callbacks
+#### T34 - Physics Debug and Callbacks
 - [ ] Physics debug visualization
 - [ ] Collision callbacks/events to gameplay code
 
-#### T60 - Physics Reproducibility
+#### T35 - Physics Reproducibility
 - [ ] Reproducibility tests for debugging and networking validation
 
 ### Phase 7: Scene & Serialization
 
-#### T25 - References and Lifecycle
+#### T36 - References and Lifecycle
 - [ ] Stable object and asset references for saved scenes
 - [ ] Runtime bootstrap/shutdown lifecycle for engine, editor, and game modules
 
-#### T46 - Scene Serialization
+#### T37 - Scene Serialization
 - [ ] Scene serialization to/from JSON
 
 ### Phase 8: Editor Shell
 
-#### T24 - Input Abstraction
+#### T38 - Input Abstraction
 - [ ] Input action mapping above GLFW/platform layer
 - [ ] Text input separation and input buffering
 
-#### T14 - Offscreen Rendering
+#### T39 - Offscreen Rendering
 - [ ] Viewport rendering to an offscreen framebuffer
 
-#### T26 - ImGui Integration
+#### T40 - ImGui Integration
 - [ ] Dear ImGui (docking branch) setup and rendering
 
-#### T27 - Panel Layout
+#### T41 - Panel Layout
 - [ ] Dockable panel layout framework
 - [ ] Layout persistence (save/restore panel arrangement)
 
-#### T28 - Hierarchy Panel
+#### T42 - Hierarchy Panel
 - [ ] Game object tree display and interaction
 
-#### T29 - Inspector Panel
-- [ ] Component property editing (hardcoded initially, reflection-driven after T36)
+#### T43 - Inspector Panel
+- [ ] Component property editing (hardcoded initially, reflection-driven after T68)
 
-#### T30 - Content Browser
+#### T44 - Content Browser
 - [ ] Basic asset browser
 
-#### T31 - Selection and Picking
+#### T45 - Selection and Picking
 - [ ] Object selection and viewport picking
 
-#### T32 - Editor Camera
+#### T46 - Editor Camera
 - [ ] Editor-specific camera controls
 
-#### T33 - Editor State Separation
+#### T47 - Editor State Separation
 - [ ] Clear separation between editor-only state and runtime/game state
 
 ### Phase 9: Editor Authoring
@@ -300,97 +300,97 @@
 
 ### Phase 10: Runtime Core
 
-#### T16 - Render Graph
+#### T55 - Render Graph
 - [ ] Basic render graph / pass dependency system
 
-#### T17 - GPU Debug Tools
+#### T56 - GPU Debug Tools
 - [ ] RenderDoc/debug markers
 - [ ] GPU profiling hooks
 
-#### T92 - Profiling
+#### T57 - Profiling
 - [ ] Profiling hooks and basic telemetry
 
-#### T91 - Task System
+#### T58 - Task System
 - [ ] Thread pool for background work (asset IO, shader compilation)
 - [ ] Job submission and completion API
 
 ### Phase 11: Asset Pipeline
 
-#### T41 - Virtual Filesystem
+#### T59 - Virtual Filesystem
 - [ ] Path abstraction for editor and packaged builds
 
-#### T37 - Asset Database
+#### T60 - Asset Database
 - [ ] Asset database with stable IDs
 - [ ] Import settings and metadata files per asset
 
-#### T38 - Asset Folder Structure
+#### T61 - Asset Folder Structure
 - [ ] Source-versus-cooked folder structure
 - [ ] Importer versioning
 
-#### T39 - Binary Serialization
+#### T62 - Binary Serialization
 - [ ] Binary format for mesh and cooked data (JSON reserved for project/metadata)
 
-#### T40 - Dependency Tracking
+#### T63 - Dependency Tracking
 - [ ] Cooked asset outputs and dependency tracking
 
-#### T45 - Async Asset Loading
+#### T64 - Async Asset Loading
 - [ ] Background thread loading with controlled main-thread handoff
 
-#### T47 - Asset Hot Reload
+#### T65 - Asset Hot Reload
 - [ ] Asset reimport and hot reload
 
 ### Phase 12: Gameplay Modules
 
-#### T34 - Module Interface
+#### T66 - Module Interface
 - [ ] C++ gameplay module/plugin interface with stable boundary
 
-#### T35 - Hot Reload
+#### T67 - Hot Reload
 - [ ] Desktop hot reload for editor/dev builds
 
-#### T36 - Reflection and Ownership
+#### T68 - Reflection and Ownership
 - [ ] Component registration/reflection for serialization and editor exposure
 - [ ] Ownership rules and versioning strategy between engine, editor, and gameplay modules
 
 ### Phase 13: Animation
 
-#### T68 - Skeletal Mesh
+#### T69 - Skeletal Mesh
 - [ ] Skeletal mesh import and skinning
 
-#### T69 - Animation Playback
+#### T70 - Animation Playback
 - [ ] Animation clip playback
 
-#### T70 - Animation Systems
+#### T71 - Animation Systems
 - [ ] Animation state machine and blend tree
 - [ ] Animation events/notifies for gameplay hooks
 - [ ] Root motion policy and gameplay ownership rules
 
 ### Phase 14: Audio & Runtime UI
 
-#### T64 - Font Rendering
+#### T72 - Font Rendering
 - [ ] Font rasterization (stb_truetype / FreeType)
 - [ ] In-engine text display (debug overlay, UI labels)
 
-#### T65 - Audio Playback
+#### T73 - Audio Playback
 - [ ] raudio integration (load, play, stream sounds)
 
-#### T66 - Audio Components
+#### T74 - Audio Components
 - [ ] Spatial audio, buses/submixes, and listener management
 
-#### T67 - Runtime UI
+#### T75 - Runtime UI
 - [ ] Gameplay UI system (menus, HUD, widgets)
 - [ ] UI input focus and integration with gameplay input
 
 ### Phase 15: Networking
 
-#### T61 - Authority Model
+#### T76 - Authority Model
 - [ ] Define client/server authority model
 - [ ] Define replicated object identity and ownership rules
 
-#### T62 - Replication Design
+#### T77 - Replication Design
 - [ ] Define serialization rules for replication
 - [ ] Choose prediction/reconciliation scope (full movement, selected actors, or hybrid)
 
-#### T63 - Network Protocol and Documentation
+#### T78 - Network Protocol and Documentation
 - [ ] Validate object model, physics, and gameplay assumptions against representative scenarios
 - [ ] Lock reliable/unreliable channel usage and message categories
 - [ ] Define divergence detection and debug tooling requirements
@@ -413,53 +413,53 @@
 
 ### Phase 16: Rendering Performance
 
-#### T75 - Draw Call Optimization
+#### T84 - Draw Call Optimization
 - [ ] Batching and instancing
 
-#### T76 - LOD
+#### T85 - LOD
 - [ ] LOD support
 
-#### T77 - Post-Processing
+#### T86 - Post-Processing
 - [ ] Basic post-processing stack
 
-#### T78 - Occlusion Culling
+#### T87 - Occlusion Culling
 - [ ] Occlusion culling
 - [ ] Re-evaluate GPU-driven rendering direction based on profiling
 
 ### Phase 17: Multi-Backend
 
-#### T93 - Cross-Backend Shader Compilation
+#### T88 - Cross-Backend Shader Compilation
 - [ ] SPIRV-Cross for MSL (Metal) output
 - [ ] DXIL compilation for D3D12
 
-#### T15 - Multi-Backend Validation
+#### T89 - Multi-Backend Validation
 - [ ] Backend capability detection and fallback table
 - [ ] Rendering validated on Vulkan, D3D12, and Metal
 
 ### Phase 18: Ray Tracing
 
-#### T84 - Acceleration Structures
+#### T90 - Acceleration Structures
 - [ ] BLAS/TLAS building
 
-#### T85 - RT Shadows
+#### T91 - RT Shadows
 - [ ] Ray-traced shadows or ambient occlusion
 
-#### T86 - RT Reflections
+#### T92 - RT Reflections
 - [ ] Ray-traced reflections
 - [ ] Temporal denoiser for low-sample RT output
 
-#### T87 - Hybrid Pipeline
+#### T93 - Hybrid Pipeline
 - [ ] Hybrid raster + RT pipeline
 - [ ] Fallback path for unsupported hardware/backends
 
 ### Phase 19: VFX & Shipping
 
-#### T88 - GPU Particles
+#### T94 - GPU Particles
 - [ ] GPU particle system (emission, simulation, rendering)
 
-#### T89 - Build Pipeline
+#### T95 - Build Pipeline
 - [ ] Cooked build pipeline (asset archives, executable bundling)
 
-#### T90 - Packaging
+#### T96 - Packaging
 - [ ] Game distribution packaging
 - [ ] Release config, save-data paths, and platform packaging checks
