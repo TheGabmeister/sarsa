@@ -2,7 +2,7 @@
 
 ## What
 - a modern 3D PBR game engine, object-oriented, with multiplayer
-- libraries: glfw, glm, spdlog, enet, The Forge, DXC, SPIRV-Cross, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype
+- libraries: glfw, glm, spdlog, enet, Vulkan (+ VMA), assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype
 
 ## Why
 - for learning
@@ -20,16 +20,16 @@
 - Task system / thread pool for background asset IO, compilation, and non-gameplay parallel work
 
 ### Platform & Diagnostics
-- The Forge for Vulkan, D3D12, and Metal
-- GLFW for windowing and input, unless The Forge's platform layer fully replaces it
+- Raw Vulkan initially; thin abstraction layer added later to support D3D12 and Metal
+- VMA (Vulkan Memory Allocator) for GPU memory management
+- GLFW for windowing and input
 - GLM for math
 - spdlog for structured logging
 - Validation layers, assertions, crash handling, profiling hooks, and GPU markers
 - Automated testing (unit tests, serialization round-trip tests, render comparison tests)
-- Backend capability matrix and fallback policy for optional features
 
 ### Rendering
-- HLSL shaders compiled via DXC (SPIR-V for Vulkan, DXIL for D3D12) and SPIRV-Cross (MSL for Metal)
+- GLSL shaders compiled to SPIR-V via glslc/shaderc (cross-compilation to other backends deferred to abstraction layer phase)
 - Renderer resource system (buffers, textures, descriptors, transient frame allocators)
 - Render graph / frame graph for pass dependency management
 - Material and shader system with reflection/metadata
@@ -39,7 +39,7 @@
 - Skybox and environment rendering
 - LOD support and occlusion culling
 - GPU particle / VFX system
-- Hardware ray tracing (Vulkan RT, DXR, Metal RT) with capability checks, fallbacks, and denoising
+- Hardware ray tracing (Vulkan RT initially) with capability checks, fallbacks, and denoising
 - GPU-driven rendering direction decided before performance optimization phase
 
 ### Asset Pipeline
@@ -102,7 +102,7 @@ Edge cases, tradeoffs, and hard problems for each major system.
 2. [Game Loop & Timestep](#2-game-loop--timestep)
 3. [Game Object Model](#3-game-object-model)
 4. [Transform Hierarchy](#4-transform-hierarchy)
-5. [Rendering Foundation (The Forge)](#5-rendering-foundation-the-forge)
+5. [Rendering Foundation (Vulkan)](#5-rendering-foundation-vulkan)
 6. [Shader Pipeline](#6-shader-pipeline)
 7. [Render Graph](#7-render-graph)
 8. [Materials & PBR](#8-materials--pbr)
@@ -131,13 +131,13 @@ Edge cases, tradeoffs, and hard problems for each major system.
 
 ### Hard Parts
 
-- **The Forge's build integration.** The Forge is not a typical CMake library. It ships its own build scripts and project generators. Wrapping it cleanly into CMake without forking or patching requires careful `add_subdirectory` or `ExternalProject_Add` configuration. Expect friction when The Forge updates its build structure.
+- **Vulkan SDK dependency.** The Vulkan SDK must be installed on the build machine. CMake's `find_package(Vulkan)` handles detection, but CI machines need the SDK installed or the Vulkan headers/loader vendored. VMA is a single-header library — vendor it directly.
 - **Compiler warning policy across platforms.** MSVC, Clang, and GCC have different warning sets. `-Wall -Wextra` on GCC/Clang does not map 1:1 to `/W4` on MSVC. Third-party headers will produce warnings under strict policies — you need to suppress warnings for external includes (CMake `SYSTEM` keyword or pragma push/pop).
 - **Debug vs. Release configuration drift.** It is easy for Debug and Release builds to diverge silently. Debug builds with assertions enabled and Release builds with optimizations can behave differently (uninitialized variables, UB that optimizers exploit). CI must build and test both configurations.
 
 ### Edge Cases
 
-- Incremental builds with DXC shader compilation: CMake has no native shader dependency tracking. You need custom commands that track `#include` dependencies in HLSL files, or you get stale shader bytecode after header changes.
+- Incremental builds with shader compilation: CMake has no native shader dependency tracking. You need custom commands that track `#include` dependencies in GLSL files (via glslc's `-M` depfile flag), or you get stale SPIR-V after header changes.
 - Module target output directories must be predictable for hot reload to find the DLL. If CMake puts them in `Debug/` vs `Release/` subdirectories (MSVC multi-config generators do this), hot reload breaks unless you account for it.
 
 ### Tradeoffs
@@ -148,7 +148,7 @@ Edge cases, tradeoffs, and hard problems for each major system.
 | FetchContent | Cleaner repo, version pinning | Network dependency, cache invalidation issues |
 | Submodules | Git-native | Fragile, detached HEAD confusion, nested submodule pain |
 
-**Recommendation:** FetchContent with a lockfile-style approach (pinned commit hashes), falling back to vendored copies for libraries with non-standard builds (The Forge).
+**Recommendation:** FetchContent with a lockfile-style approach (pinned commit hashes).
 
 ---
 
@@ -260,40 +260,42 @@ Do not try to hybrid it with a data-oriented ECS underneath; that creates two sy
 
 ---
 
-## 5. Rendering Foundation (The Forge)
+## 5. Rendering Foundation (Vulkan)
 
 ### Hard Parts
 
-- **The Forge's abstraction level.** The Forge exposes concepts like `Renderer`, `Queue`, `CmdPool`, `Cmd`, `Buffer`, `Texture`, `RootSignature`, `Pipeline`, `DescriptorSet` — closer to raw API than engines like bgfx. You own all the complexity that higher-level abstractions hide. Every frame, you must:
-  1. Acquire a swap chain image.
+- **Vulkan's verbosity.** Vulkan requires explicit management of everything. Instance creation, physical/logical device selection, queue families, command pools, command buffers, synchronization primitives, memory allocation, descriptor sets, pipeline layouts, render passes, framebuffers — all must be configured manually. Expect ~1500 lines before a triangle appears. Every frame, you must:
+  1. Acquire a swap chain image (handle `VK_SUBOPTIMAL_KHR` and `VK_ERROR_OUT_OF_DATE_KHR`).
   2. Wait on the fence for the frame-in-flight that previously used this image.
   3. Reset and begin recording command buffers.
-  4. Transition resources to correct states (render target, shader read, etc.).
-  5. Bind pipelines, descriptors, vertex buffers, and issue draw calls.
+  4. Insert pipeline barriers to transition resources to correct states.
+  5. Begin render pass, bind pipeline/descriptors/vertex buffers, issue draw calls, end render pass.
   6. Transition the swap chain image for presentation.
-  7. Submit the command buffer and signal a fence.
-  8. Present.
+  7. Submit the command buffer, signal a fence and a semaphore.
+  8. Present (passing the semaphore for the GPU to wait on).
 
-  Missing any synchronization step causes GPU crashes, device lost errors, or visual corruption — all of which are silent in release and only show up on specific drivers.
+  Missing any synchronization step causes GPU crashes, device lost errors, or visual corruption — validation layers catch some of these, but not all.
 
-- **Resource state tracking.** The Forge requires explicit resource barriers/transitions (like Vulkan and D3D12). You must track what state every resource is in and insert transitions before use. Getting this wrong produces validation errors on some backends and silent corruption on others. The render graph (Phase 10) should eventually automate this, but you'll be managing it manually for the first 5+ phases.
+- **Pipeline barriers and resource transitions.** Vulkan requires explicit `vkCmdPipelineBarrier` calls with correct stage masks, access masks, and image layout transitions. Getting this wrong produces validation errors at best and silent corruption at worst. The render graph (Phase 10) should eventually automate this, but you'll be managing it manually for the first 5+ phases. Common mistakes: wrong `srcStageMask`/`dstStageMask`, forgetting the `oldLayout`→`newLayout` transition on first use, and missing barriers between compute and graphics passes.
 
-- **Swap chain resize.** When the window resizes, you must destroy and recreate the swap chain and all resources sized to the swap chain (depth buffer, render targets). This must happen while no GPU work is in flight. On some drivers, minimizing the window produces a 0x0 swap chain — you must detect and skip rendering entirely.
+- **Swap chain resize.** When the window resizes, `vkAcquireNextImageKHR` returns `VK_ERROR_OUT_OF_DATE_KHR`. You must destroy and recreate the swap chain, image views, depth buffer, and framebuffers. This must happen while no GPU work is in flight (`vkDeviceWaitIdle` or fence-based drain). Minimizing the window produces a 0x0 extent — detect and skip rendering entirely.
 
-- **Multi-frame buffering.** Typical engines buffer 2-3 frames in flight. Each frame has its own set of command buffers, fences, and dynamic uniform buffers. Per-frame resources must be indexed by frame index (not swap chain image index — these are different on some backends). Getting the indexing wrong causes data races between CPU and GPU.
+- **Multi-frame buffering.** Buffer 2-3 frames in flight. Each frame needs its own command buffer, fence, semaphores, and dynamic uniform buffers. Per-frame resources must be indexed by frame index (not swap chain image index — Vulkan can return swap chain images out of order). Getting the indexing wrong causes data races between CPU and GPU.
 
-- **GPU memory management.** The Forge handles some allocation, but for high-performance paths (particle buffers, streaming textures), you may need sub-allocation from larger blocks. GPU memory is a finite resource — on integrated GPUs (laptops), it's shared with system RAM. You must handle allocation failures gracefully (downgrade texture quality, reduce draw distance) rather than crashing.
+- **GPU memory management.** Use VMA (Vulkan Memory Allocator) from the start. Raw `vkAllocateMemory` has a per-device allocation limit (often 4096 allocations) that you will hit quickly. VMA handles sub-allocation, memory type selection, and defragmentation. GPU memory is finite — on integrated GPUs, it's shared with system RAM. Handle allocation failures gracefully.
+
+- **Descriptor set management.** Vulkan descriptors are verbose and error-prone. You need descriptor pool creation, descriptor set layouts, descriptor set allocation, and descriptor writes — and you must not update a descriptor set while the GPU is using it. Options: per-frame descriptor pools that reset each frame, or persistent descriptor sets with double-buffering. Starting simple (recreate per frame) is fine; optimize only when the profiler says to.
 
 ### Edge Cases
 
-- Device lost / GPU hang recovery. On D3D12, `DXGI_ERROR_DEVICE_REMOVED` means you must recreate the entire device and all resources. On Vulkan, `VK_ERROR_DEVICE_LOST` is similar. The Forge may or may not expose clean recovery paths — test this early.
+- Device lost (`VK_ERROR_DEVICE_LOST`): requires full device and resource recreation. Test this early — trigger it by removing a GPU driver or running a TDR (timeout detection and recovery).
 - Multiple monitors with different DPI. The swap chain extent must use the correct DPI-adjusted size, or rendering is blurry or cropped.
-- HDR monitors: swap chain format selection (RGBA16F, RGB10A2) and color space negotiation (sRGB, HDR10, scRGB) differ per platform and per The Forge backend.
+- HDR monitors: swap chain format selection (`VK_FORMAT_A2B10G10R10_UNORM_PACK32`, `VK_FORMAT_R16G16B16A16_SFLOAT`) and color space (`VK_COLOR_SPACE_HDR10_ST2084_EXT`, `VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT`) require `VK_EXT_swapchain_colorspace`.
+- Vulkan driver differences: NVIDIA, AMD, and Intel drivers have subtly different behavior around validation, memory types, and format support. Test on at least two vendors.
 
 ### Concerns
 
-- **The Forge's maintenance and documentation.** The Forge is maintained primarily by Confetti (the company). Documentation is sparse — you will read the source code more than docs. If they make breaking changes, your engine breaks. Pin to a specific commit.
-- **The Forge's Metal support on Windows.** The Forge supports Metal on macOS. If you're developing primarily on Windows, the Metal backend will be tested less frequently. Budget time for Metal-specific bugs when you get to Phase 17.
+- **Future abstraction layer.** Write Vulkan code cleanly, but don't over-abstract prematurely. When the abstraction layer phase arrives, you'll extract an interface from working Vulkan code — this produces a better abstraction than designing one in a vacuum. Keep Vulkan-specific types (VkBuffer, VkImage, etc.) confined to the rendering module so the rest of the engine doesn't touch them directly.
 
 ---
 
@@ -301,36 +303,24 @@ Do not try to hybrid it with a data-oriented ECS underneath; that creates two sy
 
 ### Hard Parts
 
-- **HLSL -> SPIR-V -> MSL is lossy.** SPIRV-Cross does a good job, but there are edge cases:
-  - Push constants (Vulkan) don't exist in Metal; SPIRV-Cross maps them to buffer arguments.
-  - Subpass inputs (Vulkan) don't map to D3D12 or Metal.
-  - Descriptor set bindings work differently across all three APIs. The Forge's `RootSignature` abstraction helps, but shader binding points must match what The Forge expects.
-  - Texture sampling in Metal uses separate samplers vs. combined image-samplers in Vulkan. SPIRV-Cross handles this, but you must structure HLSL to produce compatible SPIR-V.
+- **GLSL to SPIR-V compilation.** Use glslc (from the Vulkan SDK / shaderc) to compile GLSL to SPIR-V. This is straightforward for Vulkan-only, but keep in mind that when the abstraction layer phase arrives you'll need a cross-compilation strategy (HLSL via DXC, SPIRV-Cross to MSL, etc.). Writing clean GLSL now with clear binding conventions will make that transition easier.
 
-- **Include handling.** DXC supports `#include` in HLSL. You need a custom include handler that resolves paths relative to your shader source tree. Missing includes produce cryptic errors. Dependency tracking for incremental compilation requires parsing `#include` directives (or using DXC's `-M` flag for dependency output).
+- **Include handling.** glslc supports `#include` via the `GL_GOOGLE_include_directive` extension. You need dependency tracking for incremental compilation — parse `#include` directives or use glslc's `-M` flag for depfile output. CMake has no native shader dependency tracking, so this requires custom build commands.
 
-- **Shader reflection.** After compilation, you need to extract binding metadata (what uniform buffers, textures, and samplers the shader expects) to set up descriptor layouts. DXC's reflection API and SPIR-V reflection (via spirv-reflect or SPIRV-Cross) give you this data. The Forge also has its own reflection expectations — your reflection data must match The Forge's `ShaderReflection` structures.
+- **Shader reflection.** After compilation, extract binding metadata (uniform buffers, textures, samplers, push constants) to set up Vulkan descriptor set layouts and pipeline layouts. Use SPIRV-Reflect or SPIRV-Cross for this. Alternatively, define bindings by convention (set 0 = per-frame, set 1 = per-material, set 2 = per-object) and skip runtime reflection for now.
 
 - **Shader variants / permutations.** A PBR material might need variants: with/without normal map, with/without skinning, with/without alpha test. The combinatorial explosion of `#define` permutations can produce thousands of shader variants. You need a permutation management strategy:
   - Compile all permutations offline (slow compile, fast runtime).
   - Compile on demand and cache (fast iteration, potential runtime hitches).
-  - Use specialization constants (Vulkan/SPIR-V) or dynamic branching (simpler but GPU cost).
+  - Use Vulkan specialization constants (cheapest at runtime, avoids recompilation).
 
 ### Edge Cases
 
-- DXC produces different SPIR-V depending on optimization level. A shader that works at `-Od` (no optimization) may produce different results at `-O3` due to precision changes. Test both.
 - SPIR-V validation (via spirv-val) should be part of the shader build pipeline. Invalid SPIR-V can crash specific GPU drivers while working on others.
-- DXC on non-Windows platforms: DXC has Linux builds but they are less battle-tested. If contributors work on macOS/Linux, verify DXC builds for those platforms.
+- glslc optimization levels can affect precision. A shader that works at `-O0` may produce slightly different results at `-O`. Test both.
+- Vulkan validation layers catch many descriptor mismatches at runtime — but only if you're testing the code path that uses that descriptor set.
 
-### Tradeoffs
-
-| Approach | Pro | Con |
-|----------|-----|-----|
-| HLSL everywhere | Single source language, good tooling (RenderDoc, PIX) | SPIRV-Cross transpilation artifacts |
-| GLSL for Vulkan, HLSL for D3D12 | Native per backend | Two shader codebases to maintain |
-| Slang (shader language) | Modern, cross-compilation built-in | Newer ecosystem, fewer devs know it |
-
-Ship compiled bytecode, not source HLSL.
+Ship compiled SPIR-V bytecode, not source GLSL.
 
 ---
 
@@ -437,12 +427,12 @@ Ship compiled bytecode, not source HLSL.
 
 - **Hybrid pipeline complexity.** The hybrid pipeline uses rasterization for primary visibility and RT for secondary effects (shadows, reflections). This means every pixel needs data from both pipelines. Resource management, synchronization, and pass ordering become more complex. The fallback path (no RT) must produce acceptable results on its own — you're maintaining two lighting pipelines.
 
-- **Ray tracing shader compilation.** RT shaders (ray generation, closest hit, any hit, miss) use a different compilation model. DXC can compile them, but testing is harder — you can't step through RT shaders in most debuggers. Validation layers help but are slower.
+- **Ray tracing shader compilation.** RT shaders (ray generation, closest hit, any hit, miss) use a different compilation model. glslc can compile GLSL RT shaders to SPIR-V, but testing is harder — you can't step through RT shaders in most debuggers. Validation layers help but are slower.
 
 ### Concerns
 
 - RT is not available on all hardware. Any feature using RT must have a complete non-RT fallback. This means designing features "raster-first" and adding RT as an enhancement, not building features that only work with RT.
-- The Forge's RT abstraction may lag behind the latest Vulkan RT / DXR extensions. Check what's supported before committing to advanced RT features.
+- Vulkan RT extension support varies by driver version and hardware generation. Check `VK_KHR_ray_tracing_pipeline` and `VK_KHR_acceleration_structure` availability before committing to advanced RT features.
 
 ---
 
@@ -456,7 +446,7 @@ Ship compiled bytecode, not source HLSL.
   - Culling happens on the GPU — your CPU-side frustum/occlusion culling becomes redundant or supplementary.
   - Draw calls are generated by compute shaders and issued via `DrawIndirect` / `DrawIndexedIndirect`.
 
-- **Bindless resource model.** GPU-driven rendering typically requires bindless textures (all textures in a single descriptor array, indexed in the shader). Not all hardware supports this well. The Forge has some bindless support, but it varies by backend.
+- **Bindless resource model.** GPU-driven rendering typically requires bindless textures (all textures in a single descriptor array, indexed in the shader). Vulkan supports this via `VK_EXT_descriptor_indexing` (core in Vulkan 1.2), but not all hardware supports the full feature set (check `descriptorBindingPartiallyBound` and `runtimeDescriptorArray`).
 
 - **Debugging is harder.** You can't printf from a GPU culling shader. Visual artifacts from GPU-driven rendering are hard to diagnose — is it the culling compute shader? The indirect argument buffer? A wrong instance ID? GPU debugging tools help but have limitations.
 
@@ -593,7 +583,7 @@ Ship compiled bytecode, not source HLSL.
   - Circular dependencies are possible (shader includes, material references) and must be detected and broken.
 
 - **Hot reload of in-use assets.** When an asset is re-imported while the engine is running:
-  - Textures bound to descriptors cannot be destroyed while the GPU is using them. You must wait for in-flight frames to complete, then swap the resource. The Forge may require descriptor set updates.
+  - Textures bound to descriptors cannot be destroyed while the GPU is using them. You must wait for in-flight frames to complete, then swap the resource and update descriptor sets.
   - Meshes currently being rendered need their vertex/index buffers swapped. Any cached draw calls referencing old buffers must be invalidated.
   - Materials that changed need their pipeline state objects (PSOs) recreated if shader bindings changed.
   - This is a major source of bugs. Each system must support "resource replaced" notifications, and the replacement must be atomic from the renderer's perspective.
@@ -801,7 +791,7 @@ The hot reload cycle: serialize all game state → unload old DLL → copy and l
 
 - **Frame allocator sizing.** The frame allocator has a fixed budget (e.g., 16MB). If a frame exceeds this budget (e.g., a spike in particle count or a debug visualization that draws 100K lines), the allocator overflows. Options: assert and crash (easiest to diagnose), fall back to the system allocator (hides the problem), grow the buffer (wastes memory most frames). **Recommendation:** Assert in debug, fallback in release.
 
-- **GPU memory is a separate concern.** GPU memory management is handled by The Forge (and ultimately by the graphics API). Track GPU allocations separately. On discrete GPUs, VRAM is limited (4-12GB typically). On integrated GPUs, VRAM shares system RAM. The engine should track total GPU memory usage and warn when approaching the budget. The Forge's memory allocator (or VMA underneath) handles suballocation, but you must release resources when they're no longer needed (reference counting or explicit lifecycle).
+- **GPU memory is a separate concern.** VMA handles suballocation and memory type selection, but you must still track total GPU memory usage and warn when approaching the budget. On discrete GPUs, VRAM is limited (4-12GB typically). On integrated GPUs, VRAM shares system RAM. Release resources when they're no longer needed (reference counting or explicit lifecycle).
 
 ### Edge Cases
 
@@ -838,7 +828,7 @@ The hot reload cycle: serialize all game state → unload old DLL → copy and l
 
 ### Hard Parts
 
-- **GLFW and The Forge overlap.** The Forge has its own windowing layer on some platforms. On Windows, GLFW creates an HWND, and you pass it to The Forge for swap chain creation. On macOS, The Forge may expect an NSView/CAMetalLayer. Verify that GLFW's macOS window provides what The Forge needs (GLFW exposes the native window handle via `glfwGetCocoaWindow()`). If The Forge's platform layer is more complete, consider dropping GLFW and using The Forge's windowing directly — but only if it provides input handling equivalent to GLFW.
+- **GLFW and Vulkan surface creation.** GLFW provides `glfwCreateWindowSurface()` which handles platform-specific surface creation (Win32, Xlib/Wayland, Cocoa). This is straightforward, but on macOS you'll eventually need a `CAMetalLayer` for the Metal backend when the abstraction layer is added. For now, GLFW + Vulkan surface works cleanly on Windows and Linux.
 
 - **DPI awareness on Windows.** Windows has three DPI awareness modes: unaware, system, and per-monitor. GLFW supports per-monitor DPI. But the window content scale (1.0 at 96dpi, 1.5 at 144dpi, 2.0 at 192dpi) affects:
   - ImGui font rendering (fonts must be loaded at scaled sizes).
@@ -932,7 +922,7 @@ This is a learning project with the scope of a commercial engine. Realistic asse
 
 | System | Estimated Complexity | Risk |
 |--------|---------------------|------|
-| Rendering (basic PBR) | High | Manageable with The Forge |
+| Rendering (basic PBR) | High | Raw Vulkan is verbose but well-documented |
 | Physics | Medium | Jolt does the heavy lifting |
 | Editor (basic) | High | ImGui helps, but undo/redo/PIE are complex |
 | Asset Pipeline | High | Often underestimated; touches everything |

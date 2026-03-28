@@ -21,7 +21,8 @@
 - [ ] GLFW window creation and basic input loop
 
 #### T6 - Graphics Initialization
-- [ ] The Forge initialization and validation layers
+- [ ] Vulkan instance, device, and queue setup with validation layers
+- [ ] VMA initialization
 - [ ] Swapchain setup and clear screen rendering (proof of life)
 
 #### T7 - Game Loop
@@ -31,7 +32,7 @@
 ### Phase 2: First Triangle
 
 #### T8 - Shader Compilation
-- [ ] HLSL compilation via DXC (SPIR-V for Vulkan)
+- [ ] GLSL compilation to SPIR-V via glslc/shaderc
 
 #### T9 - GPU Resource Management
 - [ ] GPU upload path and staging buffers
@@ -76,9 +77,9 @@
 #### T19 - Skybox
 - [ ] Skybox rendering
 
-#### T20 - Multi-Backend Smoke Test (Optional)
-- [ ] Verify lit mesh renders on a second backend (D3D12 or Metal)
-- [ ] Note any abstraction issues for later (full validation in Phase 17)
+#### T20 - Vulkan Portability Check (Optional)
+- [ ] Test on a second GPU vendor (AMD vs NVIDIA) to catch vendor-specific assumptions
+- [ ] Note any portability issues for the abstraction layer phase
 
 ### Phase 4: Materials & Textures
 
@@ -334,20 +335,27 @@
 - [ ] Occlusion culling
 - [ ] Re-evaluate GPU-driven rendering direction based on profiling
 
-### Phase 17: Multi-Backend
+### Phase 17: Abstraction Layer & Multi-Backend
 
-#### T88 - Cross-Backend Shader Compilation
-- [ ] SPIRV-Cross for MSL (Metal) output
-- [ ] DXIL compilation for D3D12
+#### T88 - Graphics Abstraction Layer
+- [ ] Extract a thin renderer interface from the working Vulkan code
+- [ ] Define backend-agnostic resource types (buffers, textures, pipelines, render passes)
+- [ ] Vulkan backend implements the interface (refactor, not rewrite)
 
-#### T89 - Multi-Backend Validation
-- [ ] Backend capability detection and fallback table
-- [ ] Rendering validated on Vulkan, D3D12, and Metal
+#### T89 - D3D12 Backend
+- [ ] D3D12 backend implementation
+- [ ] HLSL compilation via DXC (DXIL output) or cross-compile GLSL via DXC/SPIRV-Cross
+- [ ] Rendering validated on D3D12
+
+#### T89b - Metal Backend (Optional)
+- [ ] Metal backend implementation
+- [ ] SPIRV-Cross for MSL output
+- [ ] Rendering validated on Metal
 
 ### Phase 18: Ray Tracing
 
 #### T90 - Acceleration Structures
-- [ ] BLAS/TLAS building
+- [ ] BLAS/TLAS building (Vulkan RT)
 
 #### T91 - RT Shadows
 - [ ] Ray-traced shadows or ambient occlusion
@@ -358,7 +366,7 @@
 
 #### T93 - Hybrid Pipeline
 - [ ] Hybrid raster + RT pipeline
-- [ ] Fallback path for unsupported hardware/backends
+- [ ] Fallback path for unsupported hardware
 
 ### Phase 19: VFX & Shipping
 
