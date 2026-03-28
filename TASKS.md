@@ -2,7 +2,7 @@
 
 ## What
 - a modern 3D PBR game engine, object-oriented, with multiplayer
-- libraries: glfw, glm, spdlog, The Forge, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype, FreeType
+- libraries: glfw, glm, spdlog, enet, The Forge, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype, FreeType
 
 ## Why
 - for learning
@@ -151,16 +151,17 @@
 - [ ] Backend capability detection and fallback table
 - [ ] Triangle validated on Vulkan, D3D12, and Metal
 
-### Phase 3: 3D Rendering Basics
+### Phase 3: 3D Foundations
 
-#### T16 - Render Graph
-- [ ] Basic render graph / pass dependency system
+#### T22 - Transforms and Scene Graph
+- [ ] Transform, mesh, camera, and light components
+- [ ] Parent-child transform hierarchy
 
-#### T17 - GPU Debug Tools
-- [ ] RenderDoc/debug markers
-- [ ] GPU profiling hooks
+#### T23 - Camera System
+- [ ] Perspective projection
+- [ ] Free-look camera controls
 
-#### T18 - Mesh Loading
+#### T18 - Test Mesh Loading
 - [ ] Hardcoded mesh loading (OBJ or glTF) for visual feedback
 
 #### T19 - Frustum Culling
@@ -176,13 +177,12 @@
 
 ### Phase 4: Runtime Core
 
-#### T22 - Transforms and Scene Graph
-- [ ] Transform, mesh, camera, and light components
-- [ ] Parent-child transform hierarchy
+#### T16 - Render Graph
+- [ ] Basic render graph / pass dependency system
 
-#### T23 - Camera System
-- [ ] Perspective projection
-- [ ] Free-look camera controls
+#### T17 - GPU Debug Tools
+- [ ] RenderDoc/debug markers
+- [ ] GPU profiling hooks
 
 #### T24 - Input Abstraction
 - [ ] Input action mapping above GLFW/platform layer
@@ -191,6 +191,10 @@
 #### T25 - References and Lifecycle
 - [ ] Stable object and asset references for saved scenes
 - [ ] Runtime bootstrap/shutdown lifecycle for engine, editor, and game modules
+
+#### T91 - Task System
+- [ ] Thread pool for background work (asset IO, shader compilation)
+- [ ] Job submission and completion API
 
 ### Phase 5: Editor Shell
 
@@ -204,7 +208,7 @@
 - [ ] Game object tree display and interaction
 
 #### T29 - Inspector Panel
-- [ ] Component property editing
+- [ ] Component property editing (hardcoded initially, reflection-driven after T36)
 
 #### T30 - Content Browser
 - [ ] Basic asset browser
