@@ -11,9 +11,9 @@
 - [x] Assertions and crash handling
 
 #### T2b - Crash Handling
-- [ ] Unhandled exception filter and structured crash handler
-- [ ] Minidump generation on crash
-- [ ] Ring buffer of recent log messages captured in crash reports
+- [x] Unhandled exception filter and structured crash handler
+- [x] Minidump generation on crash
+- [x] Ring buffer of recent log messages captured in crash reports
 
 #### T3 - Unit Testing
 - [ ] Test framework setup
