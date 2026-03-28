@@ -17,9 +17,9 @@
     #define SR_ASSERT(condition, ...)                                        \
         do {                                                                \
             if (!(condition)) {                                             \
-                SR_CRITICAL("Assertion failed: {} ({}:{})",                 \
-                            #condition, __FILE__, __LINE__);                \
-                SR_CRITICAL(__VA_ARGS__);                                   \
+                SR_LOG(Game, critical, "Assertion failed: {} ({}:{})",      \
+                       #condition, __FILE__, __LINE__);                     \
+                SR_LOG(Game, critical, __VA_ARGS__);                        \
                 SR_DEBUG_BREAK();                                           \
             }                                                               \
         } while (false)
@@ -27,9 +27,9 @@
     #define SR_ENGINE_ASSERT(condition, ...)                                 \
         do {                                                                \
             if (!(condition)) {                                             \
-                SR_CRITICAL("Engine assertion failed: {} ({}:{})",          \
-                            #condition, __FILE__, __LINE__);                \
-                SR_CRITICAL(__VA_ARGS__);                                   \
+                SR_LOG(Engine, critical, "Assertion failed: {} ({}:{})",    \
+                       #condition, __FILE__, __LINE__);                     \
+                SR_LOG(Engine, critical, __VA_ARGS__);                      \
                 SR_DEBUG_BREAK();                                           \
             }                                                               \
         } while (false)
