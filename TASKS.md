@@ -7,8 +7,13 @@
 - [x] Compiler warning policy and code formatting rules
 
 #### T2 - Logging and Error Handling
-- [ ] spdlog integration with structured logging
-- [ ] Assertions and crash handling
+- [x] spdlog integration with structured logging
+- [x] Assertions and crash handling
+
+#### T2b - Crash Handling
+- [ ] Unhandled exception filter and structured crash handler
+- [ ] Minidump generation on crash
+- [ ] Ring buffer of recent log messages captured in crash reports
 
 #### T3 - Unit Testing
 - [ ] Test framework setup
@@ -222,6 +227,10 @@
 #### T58 - Task System
 - [ ] Thread pool for background work (asset IO, shader compilation)
 - [ ] Job submission and completion API
+
+#### T58b - Precompiled Headers
+- [ ] Precompiled header setup for engine, editor, and game targets
+- [ ] Common heavy headers (spdlog, STL containers, GLM, Vulkan) in PCH
 
 ### Phase 11: Asset Pipeline
 

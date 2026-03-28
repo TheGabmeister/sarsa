@@ -8,6 +8,10 @@ std::shared_ptr<spdlog::logger> Log::s_engine_logger;
 std::shared_ptr<spdlog::logger> Log::s_game_logger;
 
 void Log::init() {
+    if (s_engine_logger) {
+        return;
+    }
+
     spdlog::set_pattern("%^[%T] [%n] %v%$");
 
     s_engine_logger = spdlog::stdout_color_mt("SARSA");

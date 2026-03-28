@@ -19,6 +19,7 @@ include(cmake/CompilerWarnings.cmake)
 
 # Third-party libraries (SYSTEM suppresses warnings from vendor headers)
 set(SPDLOG_NO_EXCEPTIONS ON CACHE BOOL "" FORCE)
+set(SPDLOG_SYSTEM_INCLUDES ON CACHE BOOL "" FORCE)
 add_subdirectory(vendor/spdlog)
 
 add_subdirectory(src/engine)
