@@ -40,7 +40,7 @@
 - LOD support and occlusion culling
 - GPU particle / VFX system
 - Hardware ray tracing (Vulkan RT, DXR, Metal RT) with capability checks, fallbacks, and denoising
-- GPU-driven rendering direction decided before deep renderer investment
+- GPU-driven rendering direction decided before performance optimization phase
 
 ### Asset Pipeline
 - 3D model import supporting common formats (Assimp)
@@ -98,13 +98,13 @@
 - [ ] CMake project with engine, editor, and game module targets
 - [ ] Compiler warning policy and code formatting rules
 
-#### T8 - Unit Testing
-- [ ] Test framework setup
-- [ ] First tests (logging, game loop timing)
-
 #### T2 - Logging and Error Handling
 - [ ] spdlog integration with structured logging
 - [ ] Assertions and crash handling
+
+#### T8 - Unit Testing
+- [ ] Test framework setup
+- [ ] First tests (logging, assertions, game loop timing)
 
 #### T3 - Memory Diagnostics
 - [ ] Debug leak checks and allocation counters
@@ -168,6 +168,10 @@
 #### T21 - Skybox
 - [ ] Skybox rendering
 
+#### T96 - Multi-Backend Smoke Test (Optional)
+- [ ] Verify lit mesh renders on a second backend (D3D12 or Metal)
+- [ ] Note any abstraction issues for later (full validation in Phase 17)
+
 ### Phase 4: Materials & Textures
 
 #### T42 - 3D Model Import
@@ -180,7 +184,15 @@
 #### T44 - Material System
 - [ ] Material asset system (textures, shader assignment, parameters)
 
+#### T94 - GPU-Driven Rendering Decision
+- [ ] Evaluate GPU-driven vs. CPU-driven draw submission for this engine's scope
+- [ ] Document decision and implications for future rendering work
+
 ### Phase 5: Shadows & PBR
+
+#### T95 - Render Pass Management
+- [ ] Minimal pass/resource orchestration (render target creation, pass ordering, resource transitions)
+- [ ] Enough structure to support shadow passes feeding into the main lighting pass
 
 #### T73 - Shadow Mapping
 - [ ] Shadow mapping (directional + point light shadows)
@@ -220,14 +232,18 @@
 
 ### Phase 7: Scene & Serialization
 
-#### T46 - Scene Serialization
-- [ ] Scene serialization to/from JSON
-
 #### T25 - References and Lifecycle
 - [ ] Stable object and asset references for saved scenes
 - [ ] Runtime bootstrap/shutdown lifecycle for engine, editor, and game modules
 
+#### T46 - Scene Serialization
+- [ ] Scene serialization to/from JSON
+
 ### Phase 8: Editor Shell
+
+#### T24 - Input Abstraction
+- [ ] Input action mapping above GLFW/platform layer
+- [ ] Text input separation and input buffering
 
 #### T14 - Offscreen Rendering
 - [ ] Viewport rendering to an offscreen framebuffer
@@ -283,10 +299,6 @@
 - [ ] Runtime-spawned object handling and state restoration after PIE
 
 ### Phase 10: Runtime Core
-
-#### T24 - Input Abstraction
-- [ ] Input action mapping above GLFW/platform layer
-- [ ] Text input separation and input buffering
 
 #### T16 - Render Graph
 - [ ] Basic render graph / pass dependency system
