@@ -6,14 +6,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Sarsa is a modern 3D PBR multiplayer game engine written in C++ using Vulkan, built as a learning project. It consists of three separate binaries/libraries: **engine** (runtime), **editor**, and **game module** (gameplay DLL). The full technical specification lives in SPEC.md and the implementation roadmap in TASKS.md (19 phases, 97 tasks).
 
+## Build Commands
+
+```bash
+# Configure (Visual Studio generator, x64)
+cmake -B build -G "Visual Studio 18 2026" -A x64
+
+# Build
+cmake --build build --config Debug
+cmake --build build --config Release
+```
+
+Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.dll`, `build/lib/<Config>/sarsa_engine.lib`
+
 ## Build System
 
-- **CMake** is the build system with three targets: engine, editor, game module
+- **CMake 3.25+**, C++20, no compiler extensions
+- Three targets: `sarsa_engine` (STATIC lib), `sarsa_editor` (executable), `sarsa_game` (MODULE lib for hot reload)
 - All third-party libraries are **vendored in `vendor/`** (no FetchContent, no git submodules, manual updates only)
 - Third-party headers use CMake `SYSTEM` keyword to suppress warnings
 - Vulkan SDK must be installed on the host; CMake detects it
 - Shaders: GLSL -> SPIR-V via glslc/shaderc with `-M` depfile flag for incremental builds (CMake alone can't track shader dependencies)
 - Both Debug and Release configurations must build and pass CI
+- Compiler warnings are errors (`/WX` / `-Werror`); policy defined in `cmake/CompilerWarnings.cmake`
+- Exceptions disabled project-wide (`/EHs-c-` / `-fno-exceptions`)
 
 ## Architecture
 

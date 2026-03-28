@@ -129,6 +129,13 @@ Edge cases, tradeoffs, and hard problems for each major system.
 
 ## 1. Build System & Project Structure
 
+### Toolchain
+
+- **C++20** (`CMAKE_CXX_STANDARD 20`, no compiler extensions). Chosen for `std::span`, designated initializers, concepts, and `std::bit_cast`. C++23 excluded due to uneven compiler/library support across MSVC/Clang/GCC.
+- **No exceptions.** Assertions for programmer errors, error codes/result types for runtime failures. Exceptions disabled at the compiler level (`/EHs-c-` on MSVC, `-fno-exceptions` on GCC/Clang).
+- **Warnings as errors.** `/W4 /WX /permissive-` on MSVC, `-Wall -Wextra -Wpedantic -Werror` on GCC/Clang. Warning policy defined in a shared CMake module (`cmake/CompilerWarnings.cmake`) applied to all first-party targets.
+- **Build generator.** Visual Studio generator is the default on Windows. Ninja is faster for incremental builds but optional — install via `winget install Ninja-build.Ninja` if desired.
+
 ### Hard Parts
 
 - **Vulkan SDK dependency.** The Vulkan SDK must be installed on the build machine. CMake's `find_package(Vulkan)` handles detection, but CI machines need the SDK installed or the Vulkan headers/loader vendored. VMA is a single-header library — vendor it directly.

@@ -1,3 +1,13 @@
+# Build directories
+build/
+build-*/
+out/
+
+# IDE
+.vs/
+.vscode/
+CMakeUserPresets.json
+
 # Prerequisites
 *.d
 
