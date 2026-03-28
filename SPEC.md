@@ -90,9 +90,9 @@
 
 ---
 
-# Sarsa Engine — Technical Specification
+# Technical Specification
 
-This document covers implementation details, edge cases, tradeoffs, and hard problems for each major system. It is organized by subsystem. Each section addresses **what is hard**, **what can go wrong**, and **what decisions have lasting consequences**.
+Edge cases, tradeoffs, and hard problems for each major system.
 
 ---
 
@@ -129,12 +129,6 @@ This document covers implementation details, edge cases, tradeoffs, and hard pro
 
 ## 1. Build System & Project Structure
 
-### Implementation
-
-- Three targets: `sarsa-runtime` (static/shared lib), `sarsa-editor` (executable), `sarsa-game` (executable or DLL for hot reload).
-- The runtime library contains all engine systems. The editor links the runtime and adds editor-specific code. The game module is a separate shared library loaded at runtime by both the editor and the standalone game executable.
-- Third-party libraries should be vendored or fetched via CMake's `FetchContent`. Avoid system-installed dependencies — they cause "works on my machine" issues.
-
 ### Hard Parts
 
 - **The Forge's build integration.** The Forge is not a typical CMake library. It ships its own build scripts and project generators. Wrapping it cleanly into CMake without forking or patching requires careful `add_subdirectory` or `ExternalProject_Add` configuration. Expect friction when The Forge updates its build structure.
@@ -160,7 +154,9 @@ This document covers implementation details, edge cases, tradeoffs, and hard pro
 
 ## 2. Game Loop & Timestep
 
-### Implementation
+### Implementation Detail
+
+The accumulator model:
 
 ```
 accumulator = 0
@@ -176,8 +172,7 @@ while running:
     render(alpha)                  // interpolated state for smooth display
 ```
 
-- `FIXED_DT` = 1/60 or 1/120. This is a global engine constant — changing it mid-run invalidates physics tuning, animation timing, and network assumptions.
-- The simulation produces discrete states. The renderer interpolates between the previous and current simulation state using `alpha`. This means the render is always showing state that is slightly in the past (at most one tick behind).
+`FIXED_DT` is a global engine constant — changing it mid-run invalidates physics tuning, animation timing, and network assumptions. The renderer interpolates between the previous and current simulation state using `alpha`, meaning the render is always at most one tick behind.
 
 ### Hard Parts
 
@@ -203,11 +198,9 @@ while running:
 
 ## 3. Game Object Model
 
-### Implementation
+### Implementation Detail
 
-- Base `GameObject` class with a list of owned `Component` pointers. Components are the unit of behavior (MeshComponent, RigidBodyComponent, etc.).
-- GameObjects form a scene hierarchy via parent-child relationships. Components attach to a single owning GameObject.
-- Object identity: each GameObject has a stable UUID (for serialization, networking, editor references) and a runtime handle/index (for fast lookup).
+Object identity: each GameObject has a stable UUID (for serialization, networking, editor references) and a runtime handle/index (for fast lookup).
 
 ### Hard Parts
 
@@ -237,21 +230,15 @@ while running:
 | GameObject + Components (Unity-style) | Intuitive, well-understood | Pointer chasing, harder to parallelize, virtual call overhead |
 | Actor model (Unreal-style) | Rich inheritance hierarchy | Complex, deep vtables, hard to serialize |
 
-The project specifies OOP with component composition — this is the Unity-style model. Accept the cache and parallelism tradeoffs. Do not try to hybrid it with a data-oriented ECS underneath; that creates two systems to maintain.
+Do not try to hybrid it with a data-oriented ECS underneath; that creates two systems to maintain.
 
 ---
 
 ## 4. Transform Hierarchy
 
-### Implementation
-
-- Each GameObject stores a local transform (position, rotation, scale) relative to its parent.
-- World transforms are computed by walking up the parent chain and concatenating matrices.
-- Dirty flags: when a local transform changes, mark this node and all descendants as dirty. Recompute world transforms lazily on access, or eagerly in a defined update pass.
-
 ### Hard Parts
 
-- **Dirty flag propagation cost.** Moving a root object with 1000 descendants means marking 1000 dirty flags. If you update world transforms eagerly (batch update pass), this is fine — one pass over all dirty nodes. If you update lazily (on access), you risk redundant recomputation when multiple children are accessed in the same frame.
+- **Dirty flag propagation cost.** Local transforms are relative to parent; world transforms are computed by concatenating up the chain. When a local transform changes, mark this node and all descendants dirty. Moving a root with 1000 descendants marks 1000 flags. Eager batch update (one pass over dirty nodes) is simpler than lazy recomputation (risks redundant work when multiple children accessed per frame).
 - **Scale in hierarchies.** Non-uniform scale (different X, Y, Z scale) combined with rotation produces shear in child transforms. Most engines either:
   - Disallow non-uniform scale in the hierarchy (simplest, most predictable).
   - Allow it but document that physics shapes will not match visual appearance (Jolt uses unscaled shapes).
@@ -259,7 +246,7 @@ The project specifies OOP with component composition — this is the Unity-style
 
   **Recommendation:** Support non-uniform scale on leaf nodes only. Warn in the editor when non-uniform scale is applied to a node with children.
 
-- **Physics transform sync.** Physics engines maintain their own transform state. After each physics step, you must copy physics transforms back to the game object transforms. But game objects are in a hierarchy — if a physics body is a child of another object, its world transform from physics must be decomposed into a local transform relative to its parent. This decomposition is expensive and lossy if the parent has non-uniform scale (see above).
+- **Physics transform sync.** Physics bodies in a hierarchy complicate transform ownership (see [Section 13](#13-physics-jolt) for the full ownership model). The specific transform concern: if a physics body is a child of another object, its world transform from physics must be decomposed into a local transform relative to its parent. This decomposition is expensive and lossy if the parent has non-uniform scale.
 
   **Rule:** Physics bodies should be root-level or children of static/non-scaled parents. Enforce this at author time in the editor.
 
@@ -275,14 +262,9 @@ The project specifies OOP with component composition — this is the Unity-style
 
 ## 5. Rendering Foundation (The Forge)
 
-### Implementation
-
-- The Forge provides a thin abstraction over Vulkan, D3D12, and Metal. It exposes concepts like `Renderer`, `Queue`, `CmdPool`, `Cmd`, `Buffer`, `Texture`, `RootSignature`, `Pipeline`, `DescriptorSet`, etc.
-- Initialize The Forge, create a renderer, set up a swap chain, and submit command buffers per frame.
-
 ### Hard Parts
 
-- **The Forge's abstraction level.** The Forge is closer to raw API than engines like bgfx. You still manage command buffers, synchronization, and resource transitions manually. This is good for learning, but it means you own all the complexity that higher-level abstractions hide. Every frame, you must:
+- **The Forge's abstraction level.** The Forge exposes concepts like `Renderer`, `Queue`, `CmdPool`, `Cmd`, `Buffer`, `Texture`, `RootSignature`, `Pipeline`, `DescriptorSet` — closer to raw API than engines like bgfx. You own all the complexity that higher-level abstractions hide. Every frame, you must:
   1. Acquire a swap chain image.
   2. Wait on the fence for the frame-in-flight that previously used this image.
   3. Reset and begin recording command buffers.
@@ -317,14 +299,6 @@ The project specifies OOP with component composition — this is the Unity-style
 
 ## 6. Shader Pipeline
 
-### Implementation
-
-- Author all shaders in HLSL.
-- Compile HLSL to SPIR-V using DXC (for Vulkan).
-- Compile HLSL to DXIL using DXC (for D3D12).
-- Use SPIRV-Cross to transpile SPIR-V to MSL (for Metal).
-- Ship compiled bytecode, not source HLSL.
-
 ### Hard Parts
 
 - **HLSL -> SPIR-V -> MSL is lossy.** SPIRV-Cross does a good job, but there are edge cases:
@@ -356,19 +330,11 @@ The project specifies OOP with component composition — this is the Unity-style
 | GLSL for Vulkan, HLSL for D3D12 | Native per backend | Two shader codebases to maintain |
 | Slang (shader language) | Modern, cross-compilation built-in | Newer ecosystem, fewer devs know it |
 
-HLSL-everywhere is the right call for this project. The SPIRV-Cross issues are manageable and well-documented.
+Ship compiled bytecode, not source HLSL.
 
 ---
 
 ## 7. Render Graph
-
-### Implementation
-
-A render graph (frame graph) is a DAG of render passes with declared resource inputs/outputs. The graph compiler determines:
-- Execution order respecting data dependencies.
-- Resource lifetimes (allocate textures only for the frames they're needed).
-- Automatic barrier/transition insertion.
-- Transient resource aliasing (two passes that don't overlap can share the same GPU memory).
 
 ### Hard Parts
 
@@ -404,12 +370,6 @@ A render graph (frame graph) is a DAG of render passes with declared resource in
 
 ## 8. Materials & PBR
 
-### Implementation
-
-- Metallic-roughness PBR workflow (matches glTF standard).
-- Material assets define: albedo (color + texture), metallic, roughness, normal map, occlusion, emissive.
-- IBL: pre-filtered environment map for specular reflections, irradiance map for diffuse, BRDF integration LUT.
-
 ### Hard Parts
 
 - **Energy conservation.** The split-sum approximation for IBL must be consistent with the direct lighting BRDF. If you use different NDF (Normal Distribution Function), geometry, or Fresnel terms for direct vs. indirect lighting, metals will be too bright or too dark. Stick to the same terms everywhere (GGX/Trowbridge-Reitz NDF, Smith-GGX geometry, Schlick Fresnel).
@@ -435,12 +395,6 @@ A render graph (frame graph) is a DAG of render passes with declared resource in
 ---
 
 ## 9. Shadows
-
-### Implementation
-
-- Shadow mapping: render the scene from the light's perspective into a depth buffer (shadow map). During the main pass, sample the shadow map to determine if a pixel is in shadow.
-- Directional lights use cascaded shadow maps (CSM) — multiple shadow maps at different distances from the camera.
-- Point lights use a cubemap shadow map or dual-paraboloid mapping.
 
 ### Hard Parts
 
@@ -470,12 +424,6 @@ A render graph (frame graph) is a DAG of render passes with declared resource in
 
 ## 10. Ray Tracing
 
-### Implementation
-
-- Hardware RT via The Forge's RT API (Vulkan RT / DXR / Metal RT).
-- Build Bottom-Level Acceleration Structures (BLAS) per mesh, Top-Level Acceleration Structure (TLAS) per scene.
-- Use RT for shadows, ambient occlusion, and/or reflections — not full path tracing.
-
 ### Hard Parts
 
 - **BLAS/TLAS management with dynamic scenes.** BLAS builds are expensive. For static meshes, build once. For skinned/deforming meshes, you must rebuild or refit BLAS every frame. Refitting is cheaper but produces lower-quality acceleration structures over time.
@@ -499,10 +447,6 @@ A render graph (frame graph) is a DAG of render passes with declared resource in
 ---
 
 ## 11. GPU-Driven Rendering
-
-### Implementation
-
-GPU-driven rendering moves culling, LOD selection, and draw call generation from the CPU to the GPU using compute shaders and indirect draw commands.
 
 ### Hard Parts
 
@@ -530,12 +474,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 12. GPU Particles & VFX
 
-### Implementation
-
-- Particles simulated on the GPU via compute shaders.
-- Emit -> Simulate -> Sort (for transparent particles) -> Render.
-- Particle state stored in GPU buffers. CPU only provides spawn parameters.
-
 ### Hard Parts
 
 - **Dead particle management.** Particles die at different times. You need a free-list or compaction pass to reuse dead particle slots. Without compaction, the buffer becomes sparse, wasting GPU threads on dead particles. Compaction itself is a non-trivial GPU operation (parallel prefix sum / stream compaction).
@@ -554,11 +492,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 13. Physics (Jolt)
 
-### Implementation
-
-- Jolt Physics handles rigid body simulation, collision detection, constraints, and queries.
-- The engine wraps Jolt types (Body, Shape, PhysicsSystem) behind engine-level components (RigidBodyComponent, ColliderComponent).
-
 ### Hard Parts
 
 - **Transform ownership between physics and gameplay.** This is the single most important design decision for the physics integration. There are two approaches:
@@ -575,7 +508,7 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 - **Shape cooking and runtime cost.** Complex collision shapes (convex hulls, mesh shapes) must be cooked (preprocessed). Cooking is slow — do it at import time, not runtime. Store cooked shapes in the asset pipeline. Mesh collision shapes should only be used for static geometry. Dynamic bodies should use simple shapes (box, sphere, capsule, convex hull with low vertex count).
 
-- **Determinism.** Jolt is deterministic on the same platform with the same build (same compiler, same optimization flags) given the same input. This is sufficient for debugging (replay an input sequence and get the same result). Cross-platform determinism is NOT guaranteed and should not be relied upon for networking. The task list correctly states this.
+- **Determinism.** Jolt is deterministic on the same platform/build given the same input — sufficient for debugging. See [Cross-Cutting Concerns](#26-cross-cutting-concerns) for engine-wide determinism requirements.
 
 ### Edge Cases
 
@@ -587,12 +520,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 14. Animation
-
-### Implementation
-
-- Import skeletal meshes and animation clips via Assimp.
-- GPU skinning: upload bone matrices to a buffer, transform vertices in the vertex shader.
-- Animation state machine drives which clips play, how they blend, and when transitions occur.
 
 ### Hard Parts
 
@@ -631,12 +558,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 15. Audio
 
-### Implementation
-
-- raudio for sound loading, playback, mixing, and streaming.
-- Engine audio components: AudioSourceComponent (emitter), AudioListenerComponent (receiver).
-- 3D audio: attenuation based on distance, panning based on direction.
-
 ### Hard Parts
 
 - **Audio threading.** raudio processes audio on a separate thread (its internal callback thread). This means:
@@ -658,12 +579,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 16. Asset Pipeline
-
-### Implementation
-
-- Source assets (FBX, PNG, HLSL) are imported into an intermediate representation, then cooked into optimized binary formats.
-- Each source asset has a `.meta` file containing stable UUID, import settings, and importer version.
-- The asset database indexes all assets by UUID. References between assets use UUIDs.
 
 ### Hard Parts
 
@@ -698,14 +613,9 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 17. Gameplay Modules & Hot Reload
 
-### Implementation
+### Implementation Detail
 
-- Gameplay code compiles into a shared library (DLL on Windows, .so on Linux, .dylib on macOS).
-- The editor loads the gameplay DLL. When source changes are detected, the editor:
-  1. Serializes all game state.
-  2. Unloads the old DLL.
-  3. Copies and loads the new DLL (can't overwrite a loaded DLL on Windows).
-  4. Deserializes game state into the new code.
+The hot reload cycle: serialize all game state → unload old DLL → copy and load new DLL (can't overwrite a loaded DLL on Windows) → deserialize into new code.
 
 ### Hard Parts
 
@@ -737,12 +647,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 18. Editor
-
-### Implementation
-
-- Dear ImGui (docking branch) for all editor UI.
-- The game world renders to an offscreen framebuffer, displayed as an ImGui image in the viewport panel.
-- Panels: Viewport, Hierarchy (scene tree), Inspector (selected object properties), Content Browser (assets), Console (log output).
 
 ### Hard Parts
 
@@ -798,12 +702,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 19. Runtime UI
 
-### Implementation
-
-- A gameplay UI system for menus, HUD, health bars, dialogue, inventory — separate from ImGui.
-- Renders using the engine's rendering pipeline (textured quads, text rendering, etc.).
-- Input routed through the engine's input system with explicit focus ownership.
-
 ### Hard Parts
 
 - **Building a UI framework is a project in itself.** Even a minimal one needs:
@@ -833,12 +731,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 20. Networking
-
-### Implementation
-
-- Client-server architecture over ENet (reliable + unreliable UDP channels).
-- Server-authoritative: the server runs the simulation, clients send inputs, server sends state.
-- Client-side prediction for responsiveness; server reconciliation to correct mispredictions.
 
 ### Hard Parts
 
@@ -898,12 +790,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 21. Memory & Allocation
 
-### Implementation
-
-- Global `new`/`delete` overrides for tracking all allocations in debug builds.
-- Frame-linear allocator: a bump allocator reset at the start of each frame for temporary per-frame data.
-- Pool allocators: for fixed-size frequently allocated objects (components, particles) if profiling shows fragmentation or allocation overhead.
-
 ### Hard Parts
 
 - **Custom allocators add complexity for uncertain benefit.** Profile first. The default system allocator on modern platforms (Windows heap, glibc malloc, jemalloc) is fast and well-tested. Custom allocators are justified only when:
@@ -925,12 +811,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 22. Threading & Task System
-
-### Implementation
-
-- A thread pool with N worker threads (typically hardware_concurrency - 1 or - 2, leaving threads for the main thread and OS).
-- Tasks are submitted as function objects with dependencies. The task system executes them on available workers.
-- Main thread drives the game loop. Worker threads handle: asset import/cooking, shader compilation, physics broadphase (if Jolt's job system is used), audio decode.
 
 ### Hard Parts
 
@@ -955,11 +835,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 23. Platform & Windowing
-
-### Implementation
-
-- GLFW for window creation, input events, and platform abstraction.
-- The Forge for graphics context creation (Vulkan instance/device, D3D12 device, Metal device).
 
 ### Hard Parts
 
@@ -986,13 +861,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 
 ## 24. Diagnostics & Profiling
 
-### Implementation
-
-- Validation layers enabled in debug builds (Vulkan validation, D3D12 debug layer).
-- GPU debug markers (label command buffer regions for RenderDoc / PIX / Xcode GPU profiler).
-- CPU profiling hooks (scope-based timers with start/end markers).
-- Structured logging via spdlog with log levels (trace, debug, info, warn, error, fatal).
-
 ### Hard Parts
 
 - **Validation layers slow rendering significantly.** Vulkan validation layers can reduce framerate by 5-10×. They should be enabled in debug builds and CI, but you must have a way to run debug builds without validation for performance iteration. A command-line flag (`--no-validation`) or build option is sufficient.
@@ -1012,12 +880,6 @@ GPU-driven rendering moves culling, LOD selection, and draw call generation from
 ---
 
 ## 25. Packaging & Shipping
-
-### Implementation
-
-- A "cook" step processes all assets from source format to optimized binary format.
-- The cooked assets are packed into archives (e.g., zip, custom pack format).
-- The game executable, runtime libraries, and asset archives are bundled into a distributable package.
 
 ### Hard Parts
 
