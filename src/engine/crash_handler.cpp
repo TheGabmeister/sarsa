@@ -16,10 +16,10 @@
 
 namespace sarsa {
 
-static void write_crash_log() {
+static bool write_crash_log() {
     auto messages = Log::recent_messages();
     if (messages.empty()) {
-        return;
+        return false;
     }
 
     FILE* f = nullptr;
@@ -29,7 +29,7 @@ static void write_crash_log() {
     f = fopen("sarsa_crash.log", "w");
 #endif
     if (!f) {
-        return;
+        return false;
     }
 
     fprintf(f, "=== Sarsa Crash Log ===\n\n");
@@ -39,6 +39,7 @@ static void write_crash_log() {
     }
 
     fclose(f);
+    return true;
 }
 
 #ifdef _WIN32
@@ -54,30 +55,40 @@ static LONG WINAPI unhandled_exception_handler(EXCEPTION_POINTERS* exception_inf
         FILE_ATTRIBUTE_NORMAL,
         nullptr);
 
+    bool dump_ok = false;
     if (file != INVALID_HANDLE_VALUE) {
         MINIDUMP_EXCEPTION_INFORMATION dump_info{};
         dump_info.ThreadId = GetCurrentThreadId();
         dump_info.ExceptionPointers = exception_info;
         dump_info.ClientPointers = FALSE;
 
-        MiniDumpWriteDump(
+        dump_ok = MiniDumpWriteDump(
             GetCurrentProcess(),
             GetCurrentProcessId(),
             file,
             MiniDumpNormal,
             &dump_info,
             nullptr,
-            nullptr);
+            nullptr) != 0;
 
         CloseHandle(file);
     }
 
     // Write recent log messages to crash log
-    write_crash_log();
+    bool log_ok = write_crash_log();
 
     // Print to stderr in case console is still visible
-    fprintf(stderr, "\n*** CRASH: Minidump written to sarsa_crash.dmp\n");
-    fprintf(stderr, "*** CRASH: Log written to sarsa_crash.log\n");
+    fprintf(stderr, "\n*** CRASH ***\n");
+    if (dump_ok) {
+        fprintf(stderr, "  Minidump written to sarsa_crash.dmp\n");
+    } else {
+        fprintf(stderr, "  Failed to write minidump\n");
+    }
+    if (log_ok) {
+        fprintf(stderr, "  Log written to sarsa_crash.log\n");
+    } else {
+        fprintf(stderr, "  Failed to write crash log\n");
+    }
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -89,10 +100,14 @@ void install_crash_handler() {
 #else
 
 static void signal_handler(int signal) {
-    write_crash_log();
+    bool log_ok = write_crash_log();
 
     fprintf(stderr, "\n*** CRASH: Signal %d received\n", signal);
-    fprintf(stderr, "*** CRASH: Log written to sarsa_crash.log\n");
+    if (log_ok) {
+        fprintf(stderr, "  Log written to sarsa_crash.log\n");
+    } else {
+        fprintf(stderr, "  Failed to write crash log\n");
+    }
 
     // Re-raise to get default behavior (core dump)
     std::signal(signal, SIG_DFL);
