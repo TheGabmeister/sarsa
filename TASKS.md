@@ -347,35 +347,35 @@
 - [ ] HLSL compilation via DXC (DXIL output) or cross-compile GLSL via DXC/SPIRV-Cross
 - [ ] Rendering validated on D3D12
 
-#### T89b - Metal Backend (Optional)
+#### T90 - Metal Backend (Optional)
 - [ ] Metal backend implementation
 - [ ] SPIRV-Cross for MSL output
 - [ ] Rendering validated on Metal
 
 ### Phase 18: Ray Tracing
 
-#### T90 - Acceleration Structures
+#### T91 - Acceleration Structures
 - [ ] BLAS/TLAS building (Vulkan RT)
 
-#### T91 - RT Shadows
+#### T92 - RT Shadows
 - [ ] Ray-traced shadows or ambient occlusion
 
-#### T92 - RT Reflections
+#### T93 - RT Reflections
 - [ ] Ray-traced reflections
 - [ ] Temporal denoiser for low-sample RT output
 
-#### T93 - Hybrid Pipeline
+#### T94 - Hybrid Pipeline
 - [ ] Hybrid raster + RT pipeline
 - [ ] Fallback path for unsupported hardware
 
 ### Phase 19: VFX & Shipping
 
-#### T94 - GPU Particles
+#### T95 - GPU Particles
 - [ ] GPU particle system (emission, simulation, rendering)
 
-#### T95 - Build Pipeline
+#### T96 - Build Pipeline
 - [ ] Cooked build pipeline (asset archives, executable bundling)
 
-#### T96 - Packaging
+#### T97 - Packaging
 - [ ] Game distribution packaging
 - [ ] Release config, save-data paths, and platform packaging checks
