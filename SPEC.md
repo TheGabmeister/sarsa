@@ -140,15 +140,9 @@ Edge cases, tradeoffs, and hard problems for each major system.
 - Incremental builds with shader compilation: CMake has no native shader dependency tracking. You need custom commands that track `#include` dependencies in GLSL files (via glslc's `-M` depfile flag), or you get stale SPIR-V after header changes.
 - Module target output directories must be predictable for hot reload to find the DLL. If CMake puts them in `Debug/` vs `Release/` subdirectories (MSVC multi-config generators do this), hot reload breaks unless you account for it.
 
-### Tradeoffs
+### Library Setup
 
-| Option | Pro | Con |
-|--------|-----|-----|
-| Monorepo with vendored deps | Reproducible, no network needed to build | Larger repo, manual updates |
-| FetchContent | Cleaner repo, version pinning | Network dependency, cache invalidation issues |
-| Submodules | Git-native | Fragile, detached HEAD confusion, nested submodule pain |
-
-**Recommendation:** FetchContent with a lockfile-style approach (pinned commit hashes).
+All third-party libraries are vendored in a `vendor/` directory and integrated via CMake `add_subdirectory`. No FetchContent, no submodules, no system-installed dependencies. Each library is downloaded manually and committed to the repo. Updates are manual — download the new version, replace the folder, verify it builds.
 
 ---
 
