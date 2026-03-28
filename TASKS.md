@@ -2,7 +2,7 @@
 
 ## What
 - a modern 3D PBR game engine, object-oriented, with multiplayer
-- libraries: glfw, glm, spdlog, enet, The Forge, DXC, SPIRV-Cross, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype, FreeType
+- libraries: glfw, glm, spdlog, enet, The Forge, DXC, SPIRV-Cross, assimp, nlohmann/json, Dear ImGui, Jolt Physics, raudio, stb_image, stb_truetype
 
 ## Why
 - for learning
@@ -58,7 +58,7 @@
 - Viewport, hierarchy, inspector, and content browser workflows
 - Gizmos, selection/picking, undo/redo, and layout persistence
 - Play-in-Editor (PIE) mode with explicit world snapshot/restore rules
-- Font rasterization and in-engine text (stb_truetype, FreeType)
+- Font rasterization and in-engine text (stb_truetype)
 
 ### Runtime UI
 - Gameplay UI system separate from the editor (menus, HUD, widgets)
@@ -367,7 +367,7 @@
 ### Phase 14: Audio & Runtime UI
 
 #### T72 - Font Rendering
-- [ ] Font rasterization (stb_truetype / FreeType)
+- [ ] Font rasterization (stb_truetype)
 - [ ] In-engine text display (debug overlay, UI labels)
 
 #### T73 - Audio Playback
