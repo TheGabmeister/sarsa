@@ -136,6 +136,19 @@ Edge cases, tradeoffs, and hard problems for each major system.
 - **Warnings as errors.** `/W4 /WX /permissive-` on MSVC, `-Wall -Wextra -Wpedantic -Werror` on GCC/Clang. Warning policy defined in a shared CMake module (`cmake/CompilerWarnings.cmake`) applied to all first-party targets.
 - **Build generator.** Visual Studio generator is the default on Windows. Ninja is faster for incremental builds but optional — install via `winget install Ninja-build.Ninja` if desired.
 
+### Naming Conventions
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Namespaces | `snake_case` | `sarsa`, `sarsa::core` |
+| Classes/Structs | `PascalCase` | `GameObject`, `MeshRenderer` |
+| Functions/Methods | `snake_case` | `create_window`, `get_transform` |
+| Variables/Parameters | `snake_case` | `frame_count`, `delta_time` |
+| Constants/Enums | `UPPER_SNAKE_CASE` | `MAX_FRAMES_IN_FLIGHT` |
+| Enum values | `PascalCase` | `RenderPass::Forward` |
+| Member variables | `m_` prefix | `m_position`, `m_frame_count` |
+| Files | `snake_case` | `game_object.h`, `mesh_renderer.cpp` |
+
 ### Hard Parts
 
 - **Vulkan SDK dependency.** The Vulkan SDK must be installed on the build machine. CMake's `find_package(Vulkan)` handles detection, but CI machines need the SDK installed or the Vulkan headers/loader vendored. VMA is a single-header library — vendor it directly.
