@@ -31,6 +31,39 @@ Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.d
 - Compiler warnings are errors (`/WX` / `-Werror`); policy defined in `cmake/CompilerWarnings.cmake`
 - Exceptions disabled project-wide (`/EHs-c-` / `-fno-exceptions`)
 
+## Naming Conventions
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Namespaces | `snake_case` | `sarsa`, `sarsa::core` |
+| Classes/Structs | `PascalCase` | `GameObject`, `MeshRenderer` |
+| Functions/Methods | `snake_case` | `create_window`, `get_transform` |
+| Variables/Parameters | `snake_case` | `frame_count`, `delta_time` |
+| Constants/Enums | `UPPER_SNAKE_CASE` | `MAX_FRAMES_IN_FLIGHT` |
+| Enum values | `PascalCase` | `RenderPass::Forward` |
+| Member variables | `m_` prefix | `m_position`, `m_frame_count` |
+| Files | `snake_case` | `game_object.h`, `mesh_renderer.cpp` |
+
+## Logging and Assertions
+
+Two log channels with a single macro pattern:
+
+```cpp
+SR_LOG_ENGINE(info, "Sarsa Engine v{}.{}.{}", major, minor, patch);
+SR_LOG_GAME(warn, "Player {} disconnected", id);
+```
+
+Levels: `trace`, `debug`, `info`, `warn`, `error`, `critical`. Safe to call before `Log::init()` (silently no-ops).
+
+Debug assertions (compiled out in Release):
+
+```cpp
+SR_ENGINE_ASSERT(condition, "Engine error: {}", detail);  // logs to Engine channel
+SR_ASSERT(condition, "Game error: {}", detail);            // logs to Game channel
+```
+
+A ring buffer captures the last 128 log messages. On crash, the handler writes `sarsa_crash.dmp` (minidump) and `sarsa_crash.log` (recent messages).
+
 ## Architecture
 
 ### Core Design Decisions
@@ -39,7 +72,7 @@ Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.d
 - **Generational handles (slot map)** for game object references instead of raw pointers. Each GameObject has a stable UUID (for serialization/networking) plus a runtime handle (for fast lookup).
 - **Component composition** model with explicit update ordering. Deferred destruction: mark objects for deletion, sweep at frame boundaries.
 - **No exceptions**: assertions for programmer errors, error codes/result types for runtime failures.
-- **Hot reload**: gameplay code compiles as DLL/SO with a **C-style ABI boundary** (no STL types, no vtables, no allocations crossing boundary). Reload cycle: serialize state -> unload DLL -> copy to temp name -> load new copy -> deserialize.
+- **Hot reload**: gameplay code compiles as DLL/SO with a **C-style ABI boundary** (no STL types, no vtables, no allocations crossing boundary). Reload cycle: serialize state -> unload DLL -> copy to temp name -> load new copy -> deserialize. The game module exports a single `extern "C"` function (`sarsa_create_module`) returning a `SarsaModuleInterface` struct of function pointers.
 - **Transform ownership**: dynamic bodies owned by physics engine, kinematic bodies owned by gameplay.
 - **Serialization versioning**: version number in every format, prefer additive changes.
 

@@ -30,7 +30,13 @@ Do not invent architecture that conflicts with `SPEC.md`. If a requested change 
 
 ## Current Repository State
 
-At the time this file was written, the repository is mostly planning and documentation. Do not assume an existing engine layout, build tree, or module structure beyond what the docs define. Prefer incremental scaffolding that matches the roadmap instead of speculative large-scale boilerplate.
+The repository is still early-phase and specification-led, but it is no longer docs-only. The current tree includes:
+
+- a working top-level CMake project with `engine`, `editor`, and `game module` targets
+- vendored `spdlog` integration under `vendor/`
+- initial diagnostics scaffolding including logging, assertions, and crash-handler setup
+
+Do not assume later-phase engine systems already exist beyond this minimal foundation. Prefer incremental scaffolding that matches the roadmap instead of speculative large-scale boilerplate.
 
 ## Working Style
 
