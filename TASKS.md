@@ -3,8 +3,8 @@
 ### Phase 1: Minimal Setup
 
 #### T1 - CMake Project Structure
-- [ ] CMake project with engine, editor, and game module targets
-- [ ] Compiler warning policy and code formatting rules
+- [x] CMake project with engine, editor, and game module targets
+- [x] Compiler warning policy and code formatting rules
 
 #### T2 - Logging and Error Handling
 - [ ] spdlog integration with structured logging

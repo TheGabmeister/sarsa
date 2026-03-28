@@ -17,6 +17,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include(cmake/CompilerWarnings.cmake)
 
+# Third-party libraries (SYSTEM suppresses warnings from vendor headers)
+set(SPDLOG_NO_EXCEPTIONS ON CACHE BOOL "" FORCE)
+add_subdirectory(vendor/spdlog)
+
 add_subdirectory(src/engine)
 add_subdirectory(src/editor)
 add_subdirectory(src/game)
