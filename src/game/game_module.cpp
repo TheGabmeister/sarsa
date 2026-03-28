@@ -5,9 +5,9 @@ static void on_unload() {}
 static void on_update(float /*dt*/) {}
 
 extern "C" SARSA_GAME_API SarsaModuleInterface sarsa_create_module() {
-    SarsaModuleInterface iface{};
-    iface.on_load = on_load;
-    iface.on_unload = on_unload;
-    iface.on_update = on_update;
-    return iface;
+    SarsaModuleInterface module_interface{};
+    module_interface.on_load = on_load;
+    module_interface.on_unload = on_unload;
+    module_interface.on_update = on_update;
+    return module_interface;
 }
