@@ -3,6 +3,7 @@ add_executable(sarsa_tests
     log_tests.cpp
     assert_tests.cpp
     fixed_timestep_tests.cpp
+    memory_diagnostics_tests.cpp
 )
 
 target_include_directories(sarsa_tests

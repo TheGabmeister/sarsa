@@ -20,7 +20,7 @@
 - [x] First tests (logging, assertions, game loop timing)
 
 #### T4 - Memory Diagnostics
-- [ ] Debug leak checks and allocation counters
+- [x] Debug leak checks and allocation counters
 
 #### T5 - Window and Input
 - [ ] GLFW window creation and basic input loop
