@@ -16,8 +16,8 @@
 - [x] Ring buffer of recent log messages captured in crash reports
 
 #### T3 - Unit Testing
-- [ ] Test framework setup
-- [ ] First tests (logging, assertions, game loop timing)
+- [x] Test framework setup
+- [x] First tests (logging, assertions, game loop timing)
 
 #### T4 - Memory Diagnostics
 - [ ] Debug leak checks and allocation counters

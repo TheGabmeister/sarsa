@@ -1,7 +1,9 @@
 add_library(sarsa_engine STATIC
     engine.cpp
     log.cpp
+    assert.cpp
     crash_handler.cpp
+    fixed_timestep.cpp
 )
 
 target_include_directories(sarsa_engine

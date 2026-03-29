@@ -11,7 +11,7 @@ int main() {
                   sarsa::VERSION_MAJOR,
                   sarsa::VERSION_MINOR,
                   sarsa::VERSION_PATCH);
-    SR_ENGINE_ASSERT(true, "This should not fire");
+    SR_ASSERT_ENGINE(true, "This should not fire");
 
     return 0;
 }

@@ -58,7 +58,7 @@ Levels: `trace`, `debug`, `info`, `warn`, `error`, `critical`. Safe to call befo
 Debug assertions (compiled out in Release):
 
 ```cpp
-SR_ENGINE_ASSERT(condition, "Engine error: {}", detail);  // logs to Engine channel
+SR_ASSERT_ENGINE(condition, "Engine error: {}", detail);  // logs to Engine channel
 SR_ASSERT(condition, "Game error: {}", detail);            // logs to Game channel
 ```
 
