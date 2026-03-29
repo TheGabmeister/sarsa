@@ -12,10 +12,14 @@ int main() {
                   sarsa::VERSION_MINOR,
                   sarsa::VERSION_PATCH);
 
-    sarsa::Window window;
+    auto window = sarsa::Window::create();
+    if (!window) {
+        SR_LOG_ENGINE(critical, "Failed to create window");
+        return 1;
+    }
 
-    while (!window.should_close()) {
-        window.poll_events();
+    while (!window->should_close()) {
+        window->poll_events();
     }
 
     SR_LOG_ENGINE(info, "Shutting down");

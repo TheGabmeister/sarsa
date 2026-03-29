@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <new>
 
+#ifdef _MSC_VER
+    #include <malloc.h>
+#endif
+
 namespace sarsa {
 
 namespace {
@@ -109,8 +113,68 @@ void tracked_free(void* ptr) noexcept {
     std::free(real);
 }
 
+// Aligned allocation helpers (for over-aligned types via std::align_val_t)
+
+std::size_t aligned_header_size(std::size_t alignment) {
+    return (sizeof(std::size_t) + alignment - 1) & ~(alignment - 1);
+}
+
+void* platform_aligned_alloc(std::size_t size, std::size_t alignment) {
+#ifdef _MSC_VER
+    return _aligned_malloc(size, alignment);
+#else
+    std::size_t rounded = (size + alignment - 1) & ~(alignment - 1);
+    return std::aligned_alloc(alignment, rounded);
+#endif
+}
+
+void platform_aligned_free(void* ptr) {
+#ifdef _MSC_VER
+    _aligned_free(ptr);
+#else
+    std::free(ptr);
+#endif
+}
+
+void* tracked_aligned_alloc(std::size_t size, std::align_val_t alignment) {
+    auto align = static_cast<std::size_t>(alignment);
+    auto header = aligned_header_size(align);
+    void* ptr = platform_aligned_alloc(header + size, align);
+    if (!ptr) {
+        std::abort();
+    }
+    *static_cast<std::size_t*>(ptr) = size;
+    sarsa::MemoryDiagnostics::record_alloc(size);
+    return static_cast<char*>(ptr) + header;
+}
+
+void* tracked_aligned_alloc_nothrow(std::size_t size, std::align_val_t alignment) noexcept {
+    auto align = static_cast<std::size_t>(alignment);
+    auto header = aligned_header_size(align);
+    void* ptr = platform_aligned_alloc(header + size, align);
+    if (!ptr) {
+        return nullptr;
+    }
+    *static_cast<std::size_t*>(ptr) = size;
+    sarsa::MemoryDiagnostics::record_alloc(size);
+    return static_cast<char*>(ptr) + header;
+}
+
+void tracked_aligned_free(void* ptr, std::align_val_t alignment) noexcept {
+    if (!ptr) {
+        return;
+    }
+    auto align = static_cast<std::size_t>(alignment);
+    auto header = aligned_header_size(align);
+    void* real = static_cast<char*>(ptr) - header;
+    std::size_t size = *static_cast<std::size_t*>(real);
+    sarsa::MemoryDiagnostics::record_free(size);
+    platform_aligned_free(real);
+}
+
 } // namespace
 
+// Regular new/delete
 void* operator new(std::size_t size) { return tracked_alloc(size); }
 void* operator new[](std::size_t size) { return tracked_alloc(size); }
 void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
@@ -126,5 +190,38 @@ void operator delete(void* ptr, std::size_t) noexcept { tracked_free(ptr); }
 void operator delete[](void* ptr, std::size_t) noexcept { tracked_free(ptr); }
 void operator delete(void* ptr, const std::nothrow_t&) noexcept { tracked_free(ptr); }
 void operator delete[](void* ptr, const std::nothrow_t&) noexcept { tracked_free(ptr); }
+
+// Aligned new/delete (over-aligned types)
+void* operator new(std::size_t size, std::align_val_t align) {
+    return tracked_aligned_alloc(size, align);
+}
+void* operator new[](std::size_t size, std::align_val_t align) {
+    return tracked_aligned_alloc(size, align);
+}
+void* operator new(std::size_t size, std::align_val_t align, const std::nothrow_t&) noexcept {
+    return tracked_aligned_alloc_nothrow(size, align);
+}
+void* operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t&) noexcept {
+    return tracked_aligned_alloc_nothrow(size, align);
+}
+
+void operator delete(void* ptr, std::align_val_t align) noexcept {
+    tracked_aligned_free(ptr, align);
+}
+void operator delete[](void* ptr, std::align_val_t align) noexcept {
+    tracked_aligned_free(ptr, align);
+}
+void operator delete(void* ptr, std::size_t, std::align_val_t align) noexcept {
+    tracked_aligned_free(ptr, align);
+}
+void operator delete[](void* ptr, std::size_t, std::align_val_t align) noexcept {
+    tracked_aligned_free(ptr, align);
+}
+void operator delete(void* ptr, std::align_val_t align, const std::nothrow_t&) noexcept {
+    tracked_aligned_free(ptr, align);
+}
+void operator delete[](void* ptr, std::align_val_t align, const std::nothrow_t&) noexcept {
+    tracked_aligned_free(ptr, align);
+}
 
 #endif // NDEBUG

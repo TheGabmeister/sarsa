@@ -3,44 +3,74 @@
 
 #include <GLFW/glfw3.h>
 
-#include <cstdlib>
-
 namespace {
+
+int s_glfw_ref_count = 0;
 
 void glfw_error_callback(int error_code, const char* description) {
     SR_LOG_ENGINE(error, "GLFW error {}: {}", error_code, description);
+}
+
+void release_glfw() {
+    --s_glfw_ref_count;
+    if (s_glfw_ref_count == 0) {
+        glfwTerminate();
+    }
 }
 
 } // namespace
 
 namespace sarsa {
 
-Window::Window(WindowConfig config) {
-    glfwSetErrorCallback(glfw_error_callback);
-
-    if (glfwInit() != GLFW_TRUE) {
-        SR_LOG_ENGINE(critical, "Failed to initialize GLFW");
-        std::abort();
-    }
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-    m_window = glfwCreateWindow(config.width, config.height, config.title, nullptr, nullptr);
-    if (!m_window) {
-        SR_LOG_ENGINE(critical, "Failed to create GLFW window");
-        glfwTerminate();
-        std::abort();
-    }
-
-    SR_LOG_ENGINE(info, "Window created: {}x{}", config.width, config.height);
-}
+Window::Window(GLFWwindow* window) : m_window(window) {}
 
 Window::~Window() {
     if (m_window) {
         glfwDestroyWindow(m_window);
+        release_glfw();
     }
-    glfwTerminate();
+}
+
+Window::Window(Window&& other) noexcept : m_window(other.m_window) {
+    other.m_window = nullptr;
+}
+
+Window& Window::operator=(Window&& other) noexcept {
+    if (this != &other) {
+        if (m_window) {
+            glfwDestroyWindow(m_window);
+            release_glfw();
+        }
+        m_window = other.m_window;
+        other.m_window = nullptr;
+    }
+    return *this;
+}
+
+std::optional<Window> Window::create(WindowConfig config) {
+    glfwSetErrorCallback(glfw_error_callback);
+
+    if (s_glfw_ref_count == 0) {
+        if (glfwInit() != GLFW_TRUE) {
+            SR_LOG_ENGINE(error, "Failed to initialize GLFW");
+            return std::nullopt;
+        }
+    }
+    ++s_glfw_ref_count;
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+    GLFWwindow* handle = glfwCreateWindow(
+        config.width, config.height, config.title, nullptr, nullptr);
+    if (!handle) {
+        SR_LOG_ENGINE(error, "Failed to create GLFW window");
+        release_glfw();
+        return std::nullopt;
+    }
+
+    SR_LOG_ENGINE(info, "Window created: {}x{}", config.width, config.height);
+    return Window(handle);
 }
 
 bool Window::should_close() const {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 struct GLFWwindow;
 
 namespace sarsa {
@@ -12,13 +14,13 @@ struct WindowConfig {
 
 class Window {
 public:
-    explicit Window(WindowConfig config = {});
+    static std::optional<Window> create(WindowConfig config = {});
     ~Window();
 
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
-    Window(Window&&) = delete;
-    Window& operator=(Window&&) = delete;
+    Window(Window&& other) noexcept;
+    Window& operator=(Window&& other) noexcept;
 
     [[nodiscard]] bool should_close() const;
     void poll_events();
@@ -29,6 +31,7 @@ public:
     [[nodiscard]] GLFWwindow* handle() const { return m_window; }
 
 private:
+    explicit Window(GLFWwindow* window);
     GLFWwindow* m_window = nullptr;
 };
 

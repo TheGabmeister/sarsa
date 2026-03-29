@@ -70,4 +70,22 @@ SR_TEST(memory_diagnostics_peak_bytes_tracks_maximum) {
     SR_TEST_CHECK(peak_after == peak_during);
 }
 
+SR_TEST(memory_diagnostics_tracks_aligned_allocations) {
+    auto baseline = sarsa::MemoryDiagnostics::snapshot();
+
+    struct alignas(64) AlignedData {
+        char data[64];
+    };
+
+    auto* p = new AlignedData{};
+    auto d = sarsa::MemoryDiagnostics::diff(baseline);
+    SR_TEST_CHECK(d.allocation_count >= 1);
+    SR_TEST_CHECK(d.total_bytes >= static_cast<std::int64_t>(sizeof(AlignedData)));
+
+    delete p;
+    d = sarsa::MemoryDiagnostics::diff(baseline);
+    SR_TEST_CHECK(d.allocation_count == 0);
+    SR_TEST_CHECK(d.total_bytes == 0);
+}
+
 #endif // NDEBUG
