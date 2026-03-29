@@ -23,7 +23,7 @@
 - [x] Debug leak checks and allocation counters
 
 #### T5 - Window and Input
-- [ ] GLFW window creation and basic input loop
+- [x] GLFW window creation and basic input loop
 
 #### T6 - Graphics Initialization
 - [ ] Vulkan instance, device, and queue setup with validation layers

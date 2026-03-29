@@ -10,37 +10,76 @@ Sarsa is a modern 3D PBR multiplayer game engine written in C++ as a learning pr
 - `editor`: tooling and authoring environment
 - `game module`: gameplay code loaded through a stable module boundary
 
-This repository is currently specification-first. The most important context lives in the docs:
+This repository remains specification-led. The most important context lives in:
 
 - `SPEC.md`: technical architecture, constraints, tradeoffs, and recommended decisions
-- `TASKS.md`: phased implementation roadmap
-- `README.md`: minimal project label
-- `CLAUDE.md`: existing agent-oriented project summary
+- `TASKS.md`: phased implementation roadmap and current checkpoint
+- `CLAUDE.md`: compact project summary, build commands, and implementation notes
+- `README.md`: minimal label and dependency links
 
 ## Source Of Truth
 
-When the docs disagree, use this order:
+When docs disagree, use this order:
 
 1. `SPEC.md`
 2. `TASKS.md`
 3. `AGENTS.md`
-4. `README.md`
+4. `CLAUDE.md`
+5. `README.md`
 
 Do not invent architecture that conflicts with `SPEC.md`. If a requested change would materially alter a documented design decision, update the docs in the same change or call out the mismatch clearly.
 
 ## Current Repository State
 
-The repository is still early-phase and specification-led, but it is no longer docs-only. The current tree includes:
+The repo is no longer docs-only, but it is still in early implementation. The current tree includes:
 
-- a working top-level CMake project with `engine`, `editor`, and `game module` targets
-- vendored `spdlog` integration under `vendor/`
-- initial diagnostics scaffolding including logging, assertions, and crash-handler setup
+- a working top-level CMake project with `sarsa_engine`, `sarsa_editor`, `sarsa_game`, and `sarsa_tests`
+- vendored `spdlog` and `glfw` integrated via `add_subdirectory(...)`
+- compiler warnings and exception-disabling helpers in `cmake/CompilerWarnings.cmake`
+- implemented diagnostics scaffolding: logging, assertions, crash handling, and memory diagnostics
+- a small fixed-timestep utility layer with tests
+- a GLFW-backed window abstraction
+- a minimal editor executable and gameplay module stub
+- a lightweight test executable registered with CTest
 
-Do not assume later-phase engine systems already exist beyond this minimal foundation. Prefer incremental scaffolding that matches the roadmap instead of speculative large-scale boilerplate.
+Important limitation: Vulkan initialization, rendering, scene/object systems, serialization, editor UI, and gameplay hot reload infrastructure are not implemented yet. Treat the engine as a minimal runtime foundation, not as a partially complete renderer.
+
+## Current Roadmap Checkpoint
+
+Based on `TASKS.md`, the completed work is currently concentrated in Phase 1:
+
+- `T1` project structure and warning policy
+- `T2` logging and assertions
+- `T2b` crash handling
+- `T3` unit test setup and first tests
+- `T4` memory diagnostics
+- `T5` window and input foundation
+
+The next planned work starts at:
+
+- `T6` Vulkan instance/device/queue setup
+- `T7` fixed timestep game loop integration
+
+When filling gaps, prefer continuing from that checkpoint unless the user explicitly asks to explore a different branch of work.
+
+## Repository Layout
+
+The current first-party code is organized as:
+
+- `src/engine/`: core runtime library sources
+- `src/engine/include/sarsa/`: public engine headers
+- `src/editor/`: minimal editor executable entrypoint
+- `src/game/`: gameplay module target and public header
+- `src/tests/`: lightweight tests for engine foundations
+- `cmake/`: shared build helpers such as warning policy configuration
+- `vendor/`: vendored third-party dependencies
+
+Do not assume later-phase directories or subsystems already exist elsewhere in the tree.
 
 ## Working Style
 
 - Read `SPEC.md` and the relevant section of `TASKS.md` before making non-trivial changes.
+- Inspect the current implementation before extending it; do not rely on roadmap assumptions alone.
 - Keep changes aligned with the current phase/task if the user is working from the roadmap.
 - Prefer small, verifiable steps over broad framework generation.
 - Preserve user changes. Do not revert unrelated work.
@@ -63,26 +102,24 @@ These are already established and should be treated as default constraints unles
 - Simulation reproducibility on the same platform/build matters; avoid fast-math assumptions and nondeterministic container iteration in critical paths.
 - Editor/runtime/cooked-build separation is important from the start, especially for assets and filesystem access.
 
-## Implementation Priorities
+## Build And Test Rules
 
-When filling in missing code, follow the roadmap order unless the user asks otherwise:
-
-1. Minimal setup and diagnostics
-2. Vulkan proof-of-life
-3. Core scene/object foundations
-4. Materials, textures, and rendering progression
-5. Physics, serialization, and editor shell
-6. Asset pipeline, gameplay modules, animation, audio, UI, networking, and advanced rendering
-
-Do not jump to advanced systems like networking, ray tracing, or multi-backend abstraction unless the necessary prerequisites are in place or the user explicitly wants exploratory work.
-
-## Build And Dependency Rules
-
-- Prefer modern CMake with clearly separated targets for engine, editor, and game module.
+- Prefer modern CMake with clearly separated targets for engine, editor, game module, and tests.
 - Keep third-party warnings isolated using CMake `SYSTEM` includes or equivalent suppression boundaries.
-- Assume Vulkan SDK discovery happens through CMake.
-- For shaders, preserve dependency-aware compilation behavior described in `SPEC.md`.
+- Assume Vulkan SDK discovery happens through CMake once Vulkan work begins.
 - Ensure Debug and Release builds remain considered first-class.
+- Keep `sarsa_tests` buildable and runnable through CTest as foundation code grows.
+- Do not add new dependencies through package managers or global installs when vendoring is the documented strategy.
+
+Useful commands for local verification:
+
+```powershell
+cmake -B build -G "Visual Studio 18 2026" -A x64
+cmake --build build --config Debug
+ctest --test-dir build -C Debug --output-on-failure
+```
+
+If the active generator differs on the machine, adapt the configure command rather than changing the documented dependency strategy.
 
 ## Coding Guidance
 
@@ -92,6 +129,7 @@ Do not jump to advanced systems like networking, ray tracing, or multi-backend a
 - Design for debuggability: logging, assertions, validation hooks, and predictable control flow are preferred.
 - Keep single-threaded gameplay/update assumptions unless a task explicitly concerns background work.
 - For serialization, asset, and networking work, prefer stable identifiers and versioned formats.
+- Match the existing naming conventions from `SPEC.md`: `snake_case` namespaces/functions/files, `PascalCase` types, `UPPER_SNAKE_CASE` constants, `m_` member prefix.
 
 ## Documentation Expectations
 
@@ -103,6 +141,7 @@ Update docs when changes affect:
 - dependency strategy
 - task ordering or task scope
 - serialization/networking/runtime guarantees
+- the repository's current implementation status
 
 If a code change intentionally diverges from `SPEC.md`, either:
 
@@ -117,6 +156,7 @@ If a code change intentionally diverges from `SPEC.md`, either:
 - Building editor-only assumptions into runtime code
 - Accessing source assets from packaged/cooked-only paths
 - Treating networking as a bolt-on feature disconnected from the object model and simulation design
+- Pretending a roadmap item is implemented when only scaffolding exists
 
 ## Good First Read For Any Agent
 
@@ -125,5 +165,6 @@ Before substantial work, review:
 1. `SPEC.md`
 2. `TASKS.md`
 3. `CLAUDE.md`
+4. the relevant `CMakeLists.txt` files and current sources under `src/`
 
 Then inspect the current repository contents and work from what actually exists.

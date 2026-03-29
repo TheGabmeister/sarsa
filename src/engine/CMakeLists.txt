@@ -5,6 +5,7 @@ add_library(sarsa_engine STATIC
     crash_handler.cpp
     fixed_timestep.cpp
     memory_diagnostics.cpp
+    window.cpp
 )
 
 target_include_directories(sarsa_engine
@@ -13,6 +14,7 @@ target_include_directories(sarsa_engine
 
 target_link_libraries(sarsa_engine
     PUBLIC spdlog::spdlog
+    PUBLIC glfw
 )
 
 sarsa_set_compiler_warnings(sarsa_engine)

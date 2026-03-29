@@ -1,7 +1,7 @@
-#include <sarsa/assert.h>
 #include <sarsa/crash_handler.h>
 #include <sarsa/engine.h>
 #include <sarsa/log.h>
+#include <sarsa/window.h>
 
 int main() {
     sarsa::Log::init();
@@ -11,7 +11,13 @@ int main() {
                   sarsa::VERSION_MAJOR,
                   sarsa::VERSION_MINOR,
                   sarsa::VERSION_PATCH);
-    SR_ASSERT_ENGINE(true, "This should not fire");
 
+    sarsa::Window window;
+
+    while (!window.should_close()) {
+        window.poll_events();
+    }
+
+    SR_LOG_ENGINE(info, "Shutting down");
     return 0;
 }
