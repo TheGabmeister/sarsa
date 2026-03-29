@@ -3,3 +3,4 @@ Sarsa Game Engine
 
 Dependencies:
 - [spdlog 1.17.0](https://github.com/gabime/spdlog/releases/tag/v1.17.0)
+- [glfw 3.4](https://github.com/glfw/glfw/releases/tag/3.4)
