@@ -15,9 +15,17 @@ cmake -B build -G "Visual Studio 18 2026" -A x64
 # Build
 cmake --build build --config Debug
 cmake --build build --config Release
+
+# Run tests
+ctest -C Debug --output-on-failure --test-dir build
+
+# Run a single test by name filter
+ctest -C Debug --output-on-failure --test-dir build -R sarsa_tests
 ```
 
 Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.dll`, `build/lib/<Config>/sarsa_engine.lib`
+
+Both Debug and Release must always build and pass tests.
 
 ## Build System
 
@@ -27,9 +35,9 @@ Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.d
 - Third-party headers use CMake `SYSTEM` keyword to suppress warnings
 - Vulkan SDK must be installed on the host; CMake detects it
 - Shaders: GLSL -> SPIR-V via glslc/shaderc with `-M` depfile flag for incremental builds (CMake alone can't track shader dependencies)
-- Both Debug and Release configurations must build and pass CI
 - Compiler warnings are errors (`/WX` / `-Werror`); policy defined in `cmake/CompilerWarnings.cmake`
 - Exceptions disabled project-wide (`/EHs-c-` / `-fno-exceptions`)
+- New source files must be added to the relevant `CMakeLists.txt` target and have both `sarsa_set_compiler_warnings()` and `sarsa_disable_exceptions()` applied
 
 ## Naming Conventions
 
@@ -43,6 +51,13 @@ Outputs: `build/bin/<Config>/sarsa_editor.exe`, `build/bin/<Config>/sarsa_game.d
 | Enum values | `PascalCase` | `RenderPass::Forward` |
 | Member variables | `m_` prefix | `m_position`, `m_frame_count` |
 | Files | `snake_case` | `game_object.h`, `mesh_renderer.cpp` |
+
+## Error Handling
+
+- **No exceptions** project-wide.
+- **Assertions** (`SR_ASSERT_ENGINE`, `SR_ASSERT`) for programmer errors. Debug-only — compiled out in Release. Use for invariants and conditions that should never be false.
+- **Result types / error codes** for runtime failures (file not found, GPU device lost, network errors).
+- **Fatal runtime failures** that prevent the engine from functioning (e.g., GLFW init failure, Vulkan device creation failure) should log an error and abort, or return a failure via `std::optional` / error code from a factory function. Do not use assertions for these since they disappear in Release.
 
 ## Logging and Assertions
 
@@ -64,6 +79,31 @@ SR_ASSERT(condition, "Game error: {}", detail);            // logs to Game chann
 
 A ring buffer captures the last 128 log messages. On crash, the handler writes `sarsa_crash.dmp` (minidump) and `sarsa_crash.log` (recent messages).
 
+## Memory Diagnostics
+
+Debug-only allocation tracking via global `operator new`/`operator delete` overrides (including over-aligned types). Compiled out in Release.
+
+```cpp
+auto baseline = sarsa::MemoryDiagnostics::snapshot();
+// ... run code ...
+sarsa::MemoryDiagnostics::check_leaks(baseline); // logs warning if leaks found
+```
+
+DLL hot reload: gameplay allocations freed on unload; tracking must not report these as leaks.
+
+## Testing
+
+Custom minimal test framework in `src/tests/test_framework.h` — no external dependency. Tests are registered via static initializers and run alphabetically.
+
+```cpp
+SR_TEST(my_feature_does_something) {
+    SR_TEST_CHECK(some_condition);
+    SR_TEST_FAIL("explicit failure message");
+}
+```
+
+Add new test files to `src/tests/CMakeLists.txt`. Debug-only tests (e.g., memory diagnostics) should be wrapped in `#ifndef NDEBUG`.
+
 ## Architecture
 
 ### Core Design Decisions
@@ -71,10 +111,10 @@ A ring buffer captures the last 128 log messages. On crash, the handler writes `
 - **Fixed-timestep accumulator** (1/60s default): simulation runs at fixed rate, rendering interpolates with alpha. Cap wall-clock dt to ~250ms to prevent spiral of death. Use double for accumulator/clock, float for delta-time.
 - **Generational handles (slot map)** for game object references instead of raw pointers. Each GameObject has a stable UUID (for serialization/networking) plus a runtime handle (for fast lookup).
 - **Component composition** model with explicit update ordering. Deferred destruction: mark objects for deletion, sweep at frame boundaries.
-- **No exceptions**: assertions for programmer errors, error codes/result types for runtime failures.
 - **Hot reload**: gameplay code compiles as DLL/SO with a **C-style ABI boundary** (no STL types, no vtables, no allocations crossing boundary). Reload cycle: serialize state -> unload DLL -> copy to temp name -> load new copy -> deserialize. The game module exports a single `extern "C"` function (`sarsa_create_module`) returning a `SarsaModuleInterface` struct of function pointers.
 - **Transform ownership**: dynamic bodies owned by physics engine, kinematic bodies owned by gameplay.
 - **Serialization versioning**: version number in every format, prefer additive changes.
+- **Factory pattern** for fallible construction: types where creation can fail at runtime (e.g., `Window`) use a static `create()` method returning `std::optional<T>` rather than a constructor that aborts.
 
 ### Rendering
 
@@ -96,7 +136,6 @@ A ring buffer captures the last 128 log messages. On crash, the handler writes `
 - System allocator by default; custom allocators only where profiler justifies
 - Frame-linear allocators (~16MB budget) for per-frame temporary work
 - VMA for GPU memory tracking
-- DLL hot reload: gameplay allocations freed on unload; tracking must not report these as leaks
 
 ## Key Libraries
 
